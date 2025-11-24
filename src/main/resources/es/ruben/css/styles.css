@@ -1,0 +1,109 @@
+/* --- TEMA GENERAL HOGWARTS --- */
+.root {
+    /* Color fondo estilo pergamino antiguo */
+    -fx-background-color: #f8f5e6;
+    -fx-font-family: 'Georgia', 'Times New Roman', serif; /* Fuentes más clásicas */
+}
+
+/* Etiquetas generales */
+.label {
+    -fx-text-fill: #2f2f2f;
+}
+
+/* --- TARJETA BASE (Diseño general) --- */
+.card {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-width: 2px; /* Borde un poco más grueso para que se vea el color */
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 6, 0, 0, 3);
+}
+
+/* Efecto Hover Genérico */
+.card:hover {
+    -fx-cursor: hand;
+    -fx-background-color: #fffef0; /* Un blanco un poco más cálido */
+    -fx-scale-x: 1.02; /* Pequeño efecto de "pop" al pasar el ratón */
+    -fx-scale-y: 1.02;
+}
+
+/* --- COLORES POR CASA (Corporativos) --- */
+
+/* Gryffindor: Rojo escarlata y Dorado */
+.card-gryffindor {
+    -fx-border-color: #740001;
+}
+.card-gryffindor:hover {
+    -fx-effect: dropshadow(three-pass-box, rgba(116, 0, 1, 0.5), 10, 0, 0, 5);
+}
+
+/* Slytherin: Verde esmeralda y Plata */
+.card-slytherin {
+    -fx-border-color: #1a472a;
+}
+.card-slytherin:hover {
+    -fx-effect: dropshadow(three-pass-box, rgba(26, 71, 42, 0.5), 10, 0, 0, 5);
+}
+
+/* Ravenclaw: Azul y Bronce */
+.card-ravenclaw {
+    -fx-border-color: #0e1a40;
+}
+.card-ravenclaw:hover {
+    -fx-effect: dropshadow(three-pass-box, rgba(14, 26, 64, 0.5), 10, 0, 0, 5);
+}
+
+/* Hufflepuff: Amarillo y Negro */
+.card-hufflepuff {
+    -fx-border-color: #ecb939;
+}
+.card-hufflepuff:hover {
+    -fx-effect: dropshadow(three-pass-box, rgba(236, 185, 57, 0.5), 10, 0, 0, 5);
+}
+
+/* Por defecto (Sin casa o desconocida): Gris */
+.card-default {
+    -fx-border-color: #9c9c9c;
+}
+
+/* --- TIPOGRAFÍA DE LAS TARJETAS --- */
+.card-title {
+    -fx-font-weight: bold;
+    -fx-font-size: 15px;
+    -fx-font-family: 'Garamond', serif;
+    -fx-text-fill: #1a1a1a;
+}
+
+.card-subtitle {
+    -fx-font-size: 13px;
+    -fx-font-style: italic;
+    -fx-text-fill: #555555;
+}
+
+/* --- BOTONES Y CONTROLES --- */
+.button-back {
+    /* Rojo Hogwarts general */
+    -fx-background-color: #740001;
+    -fx-text-fill: #eeba30; /* Letras doradas */
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+    -fx-border-color: #eeba30;
+}
+
+.button-back:hover {
+    -fx-background-color: #5d0000;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 5, 0, 0, 2);
+}
+
+/* Estilo para los ComboBox y TextField para que encajen */
+.text-field, .combo-box {
+    -fx-background-radius: 4;
+    -fx-border-color: #b0a394;
+    -fx-background-color: #fffdf5;
+}
+
+.text-field:focused, .combo-box:focused {
+    -fx-border-color: #740001;
+}
