@@ -12,7 +12,6 @@
     </properties>
 
     <dependencies>
-        <!-- Dependencias de JavaFX -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
@@ -24,11 +23,21 @@
             <version>13</version>
         </dependency>
 
-        <!-- NUEVO: Driver para conectar con la base de datos SQLite -->
         <dependency>
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.42.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>net.sf.jasperreports</groupId>
+            <artifactId>jasperreports</artifactId>
+            <version>6.20.6</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.jasperreports</groupId>
+            <artifactId>jasperreports-fonts</artifactId>
+            <version>6.20.6</version>
         </dependency>
     </dependencies>
 
@@ -50,16 +59,6 @@
                     <execution>
                         <id>default-cli</id>
                         <configuration>
-                            <!-- Asegúrate de que esta clase coincide con tu código Java -->
-                            <mainClass>es.ruben.App</mainClass>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>debug</id>
-                        <configuration>
-                            <options>
-                                <option>-agentlib:jdwp=transport=dt_socket,server=n,address=${jpda.address}</option>
-                            </options>
                             <mainClass>es.ruben.App</mainClass>
                         </configuration>
                     </execution>

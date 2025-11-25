@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="WizardProfile" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="a1b2c3d4-e5f6-7890-1234-567890abcdef">
+
+    <field name="name" class="java.lang.String"/>
+    <field name="house" class="java.lang.String"/>
+    <field name="wand" class="java.lang.String"/>
+    <field name="image_blob" class="java.io.InputStream"/>
+
+    <background>
+        <band splitType="Stretch"/>
+    </background>
+
+    <title>
+        <band height="80" splitType="Stretch">
+            <rectangle>
+                <reportElement x="0" y="0" width="555" height="80" backcolor="#1A472A" uuid="b2c3d4e5-f678-9012-3456-7890abcdef12"/>
+                <graphicElement><pen lineWidth="0.0"/></graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="0" y="20" width="555" height="40" forecolor="#FFFFFF" uuid="c3d4e5f6-7890-1234-5678-90abcdef1234"/>
+                <textElement textAlignment="Center">
+                    <font size="24" isBold="true"/>
+                </textElement>
+                <text><![CDATA[STUDENT PROFILE]]></text>
+            </staticText>
+        </band>
+    </title>
+
+    <detail>
+        <band height="400" splitType="Stretch">
+            <rectangle>
+                <reportElement x="20" y="20" width="515" height="360" backcolor="#F8F5E6" uuid="d4e5f678-9012-3456-7890-abcdef123456"/>
+                <graphicElement><pen lineWidth="2.0" lineColor="#000000"/></graphicElement>
+            </rectangle>
+
+            <image scaleImage="RetainShape" hAlign="Center" vAlign="Middle" onErrorType="Icon">
+                <reportElement x="177" y="40" width="200" height="200" uuid="e5f67890-1234-5678-90ab-cdef12345678"/>
+                <box>
+                    <pen lineWidth="1.0" lineColor="#555555"/>
+                </box>
+                <imageExpression><![CDATA[$F{image_blob}]]></imageExpression>
+            </image>
+
+            <textField>
+                <reportElement x="20" y="260" width="515" height="40" uuid="f6789012-3456-7890-abcd-ef1234567890"/>
+                <textElement textAlignment="Center">
+                    <font size="22" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="150" y="310" width="80" height="20" forecolor="#666666" uuid="01234567-890a-bcde-f123-4567890abcde"/>
+                <textElement><font isBold="true"/></textElement>
+                <text><![CDATA[HOUSE:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="230" y="310" width="200" height="20" uuid="12345678-90ab-cdef-0123-4567890abcde"/>
+                <textElement><font size="12" isItalic="true"/></textElement>
+                <textFieldExpression><![CDATA[$F{house}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="150" y="340" width="80" height="20" forecolor="#666666" uuid="23456789-0abc-def0-1234-567890abcdef"/>
+                <textElement><font isBold="true"/></textElement>
+                <text><![CDATA[WAND:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="230" y="340" width="200" height="20" uuid="34567890-abcd-ef01-2345-67890abcdef1"/>
+                <textElement><font size="12"/></textElement>
+                <textFieldExpression><![CDATA[$F{wand}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+</jasperReport>
