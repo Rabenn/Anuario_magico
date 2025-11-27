@@ -37,7 +37,7 @@ public class HelloController {
     @FXML private StackPane rootPane;
     @FXML private Button addBtn;
     @FXML private Button pdfBtn;
-    // Nota: Hemos quitado el exportMenuBtn porque usarás Python
+    // (Sin botón de exportación Java, usaremos Python)
 
     private ObservableList<Wizard> wizardList = FXCollections.observableArrayList();
     private FilteredList<Wizard> filteredData;
@@ -51,11 +51,11 @@ public class HelloController {
 
     @FXML
     public void initialize() {
-        loadFromDatabase();
+        loadFromDatabase(); // Carga optimizada
 
         filteredData = new FilteredList<>(wizardList, p -> true);
 
-        // 1. Idiomas
+        // Idiomas
         langCombo.setItems(FXCollections.observableArrayList("Español", "English"));
         langCombo.getSelectionModel().selectFirst();
         langCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
@@ -64,16 +64,15 @@ public class HelloController {
             updatePagination();
         });
 
-        // 2. Filtros
+        // Filtros
         updateFilterCombo();
         filterTypeCombo.getSelectionModel().selectFirst();
         searchField.textProperty().addListener((obs, oldVal, newVal) -> updateFilter());
         filterTypeCombo.valueProperty().addListener((obs, oldVal, newVal) -> updateFilter());
 
-        // 3. Botones Principales
+        // Botones
         addBtn.setOnAction(e -> showAddWizardDialog());
 
-        // PDF Global
         pdfBtn.setOnAction(e -> {
             try (Connection conn = DriverManager.getConnection("jdbc:sqlite:hogwarts.db")) {
                 reportService.printYearbook(conn, rootPane.getScene().getWindow());
@@ -89,6 +88,33 @@ public class HelloController {
         }
     }
 
+    // --- CARGA DE DATOS OPTIMIZADA (SOLUCIÓN MEMORIA) ---
+    private void loadFromDatabase() {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:hogwarts.db");
+             Statement stmt = conn.createStatement();
+             // Solo traemos lo necesario
+             ResultSet rs = stmt.executeQuery("SELECT id, name, house, wand, image_blob FROM wizards")) {
+
+            System.out.println("Iniciando carga optimizada...");
+            while (rs.next()) {
+                byte[] imgBytes = rs.getBytes("image_blob");
+
+                // AQUÍ ESTÁ EL TRUCO: Pasamos 'null' como imagen visual.
+                // La clase Wizard creará la imagen solo cuando haga falta (Lazy Loading).
+                wizardList.add(new Wizard(
+                        rs.getString("id"),
+                        rs.getString("name"),
+                        rs.getString("house"),
+                        rs.getString("wand"),
+                        null,      // <--- IMAGEN NULL PARA AHORRAR RAM
+                        imgBytes
+                ));
+            }
+            System.out.println("✅ Datos cargados: " + wizardList.size());
+        } catch (SQLException e) { System.out.println("❌ Error DB: " + e.getMessage()); }
+    }
+
+    // --- AÑADIR NUEVO MAGO ---
     private void showAddWizardDialog() {
         Dialog<Wizard> dialog = new Dialog<>();
         dialog.setTitle(currentLang.equals("ES") ? "Añadir Nuevo Mago" : "Add New Wizard");
@@ -148,12 +174,12 @@ public class HelloController {
                 if (selectedFile[0] != null) {
                     try {
                         imageBytes = Files.readAllBytes(selectedFile[0].toPath());
+                        // Aquí SÍ creamos la imagen porque es solo una y el usuario quiere verla ya
                         imageObj = new Image(new FileInputStream(selectedFile[0]));
                     } catch (IOException ex) {}
                 }
                 String newId = UUID.randomUUID().toString();
                 saveWizardToDB(newId, nameField.getText(), houseCombo.getValue(), wandField.getText(), imageBytes);
-                // Mantenemos el constructor completo aunque no usemos exportación Java
                 return new Wizard(newId, nameField.getText(), houseCombo.getValue(), wandField.getText(), imageObj, imageBytes);
             }
             return null;
@@ -173,9 +199,8 @@ public class HelloController {
 
     private void deleteWizard(Wizard w) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle(currentLang.equals("ES") ? "Confirmar" : "Confirm");
-        alert.setHeaderText(null);
-        alert.setContentText(currentLang.equals("ES") ? "¿Eliminar a " + w.getName() + "?" : "Delete " + w.getName() + "?");
+        alert.setTitle("Confirmar");
+        alert.setContentText("¿Eliminar a " + w.getName() + "?");
         try {
             alert.getDialogPane().getStylesheets().add(getClass().getResource("css/styles.css").toExternalForm());
             alert.getDialogPane().getStyleClass().add("dialog-pane");
@@ -196,6 +221,7 @@ public class HelloController {
     private void showDetails(Wizard w) {
         VBox details = new VBox(20); details.setAlignment(Pos.CENTER);
         ImageView iv = new ImageView();
+        // Llamamos a w.getImage(), que activará la carga perezosa si no existe
         if (w.getImage() != null && !w.getImage().isError()) iv.setImage(w.getImage()); else iv.setImage(DEFAULT_IMAGE);
         iv.setFitHeight(250); iv.setPreserveRatio(true); iv.getStyleClass().add("detail-image");
         Label title = new Label(w.getName()); title.getStyleClass().add("detail-title");
@@ -212,8 +238,7 @@ public class HelloController {
             } catch (SQLException ex) { ex.printStackTrace(); }
         });
 
-        Button deleteBtn = new Button(currentLang.equals("ES") ? "Eliminar" : "Delete");
-        deleteBtn.getStyleClass().add("button-delete");
+        Button deleteBtn = new Button("Eliminar"); deleteBtn.getStyleClass().add("button-delete");
         deleteBtn.setOnAction(e -> deleteWizard(w));
 
         buttonsBox.getChildren().addAll(backBtn, pdfProfileBtn, deleteBtn);
@@ -221,39 +246,19 @@ public class HelloController {
         rootPane.getChildren().clear(); rootPane.getChildren().add(details);
     }
 
-    private void loadFromDatabase() {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:hogwarts.db");
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT id, name, house, wand, image_blob FROM wizards")) {
-            while (rs.next()) {
-                byte[] imgBytes = rs.getBytes("image_blob");
-                Image img = null;
-                if (imgBytes != null && imgBytes.length > 0) {
-                    try { img = new Image(new ByteArrayInputStream(imgBytes)); } catch (Exception ex) {}
-                }
-                wizardList.add(new Wizard(rs.getString("id"), rs.getString("name"), rs.getString("house"), rs.getString("wand"), img, imgBytes));
-            }
-        } catch (SQLException e) { System.out.println("❌ Error DB: " + e.getMessage()); }
-    }
-
-    // --- MÉTODOS AUXILIARES DE UI ---
-
+    // --- UI Helpers ---
     private void updateInterfaceLanguage() {
-        // CORRECCIÓN: Definimos la variable antes de usarla
         String titleText = getText("app_title");
         titleLabel.setText(titleText);
         searchField.setPromptText(getText("search_placeholder"));
-
         if (rootPane.getScene() != null && rootPane.getScene().getWindow() != null) {
-            ((Stage) rootPane.getScene().getWindow()).setTitle(titleText); // Ahora titleText existe
+            ((Stage) rootPane.getScene().getWindow()).setTitle(titleText);
         }
-        int selectedIndex = filterTypeCombo.getSelectionModel().getSelectedIndex();
+        int idx = filterTypeCombo.getSelectionModel().getSelectedIndex();
         updateFilterCombo();
-        if (selectedIndex >= 0) filterTypeCombo.getSelectionModel().select(selectedIndex);
+        if (idx >= 0) filterTypeCombo.getSelectionModel().select(idx);
     }
-
     private void updateFilterCombo() { filterTypeCombo.setItems(FXCollections.observableArrayList(getText("filter_name"), getText("filter_house"), getText("filter_wand"))); }
-
     private String getText(String key) {
         if (currentLang.equals("EN")) {
             switch(key){ case "app_title": return "HOGWARTS YEARBOOK"; case "search_placeholder": return "Search wizard..."; case "filter_name": return "Name"; case "filter_house": return "House"; case "filter_wand": return "Wand"; case "label_house": return "House: "; case "label_wand": return "Wand: "; case "btn_back": return "Back to list"; default: return key; }
@@ -289,6 +294,7 @@ public class HelloController {
         String h = (w.getHouse() != null) ? w.getHouse().toLowerCase() : "";
         if(h.contains("gryffindor")) c.getStyleClass().add("card-gryffindor"); else if(h.contains("slytherin")) c.getStyleClass().add("card-slytherin"); else if(h.contains("ravenclaw")) c.getStyleClass().add("card-ravenclaw"); else if(h.contains("hufflepuff")) c.getStyleClass().add("card-hufflepuff"); else c.getStyleClass().add("card-default");
         ImageView iv = new ImageView();
+        // Carga Perezosa: Llamamos a w.getImage() solo para las 8 tarjetas visibles
         if(w.getImage()!=null && !w.getImage().isError()) iv.setImage(w.getImage()); else iv.setImage(DEFAULT_IMAGE);
         iv.setFitHeight(140); iv.setFitWidth(140); iv.setPreserveRatio(true);
         StackPane ic = new StackPane(iv); ic.setPrefHeight(140);
