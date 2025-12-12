@@ -1,5 +1,10 @@
 package es.ruben;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -10,23 +15,20 @@ import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.TilePane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.sql.*;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 public class HelloController {
 
@@ -37,7 +39,6 @@ public class HelloController {
     @FXML private StackPane rootPane;
     @FXML private Button addBtn;
     @FXML private Button pdfBtn;
-    // (Sin botón de exportación Java, usaremos Python)
 
     private ObservableList<Wizard> wizardList = FXCollections.observableArrayList();
     private FilteredList<Wizard> filteredData;
@@ -51,11 +52,12 @@ public class HelloController {
 
     @FXML
     public void initialize() {
-        loadFromDatabase(); // Carga optimizada
+        // CAMBIO 1: Carga desde archivos en vez de DB
+        loadFromHeterogeneousFiles();
 
         filteredData = new FilteredList<>(wizardList, p -> true);
 
-        // Idiomas
+        // Idiomas (Tu lógica original)
         langCombo.setItems(FXCollections.observableArrayList("Español", "English"));
         langCombo.getSelectionModel().selectFirst();
         langCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
@@ -64,7 +66,7 @@ public class HelloController {
             updatePagination();
         });
 
-        // Filtros
+        // Filtros (Tu lógica original)
         updateFilterCombo();
         filterTypeCombo.getSelectionModel().selectFirst();
         searchField.textProperty().addListener((obs, oldVal, newVal) -> updateFilter());
@@ -73,14 +75,13 @@ public class HelloController {
         // Botones
         addBtn.setOnAction(e -> showAddWizardDialog());
 
+        // CAMBIO 2: PDF ya no usa conexión SQL, usa la lista directa
         pdfBtn.setOnAction(e -> {
-            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:hogwarts.db")) {
-                reportService.printYearbook(conn, rootPane.getScene().getWindow());
-            } catch (SQLException ex) { ex.printStackTrace(); }
+            reportService.printYearbook(new ArrayList<>(wizardList), rootPane.getScene().getWindow());
         });
 
         if (wizardList.isEmpty()) {
-            Label emptyLabel = new Label("⚠️ No hay datos. Ejecuta el script ETL.");
+            Label emptyLabel = new Label("⚠️ No hay datos. Ejecuta el script Python (ETL) primero.");
             rootPane.getChildren().add(emptyLabel);
         } else {
             setupPagination();
@@ -88,33 +89,107 @@ public class HelloController {
         }
     }
 
-    // --- CARGA DE DATOS OPTIMIZADA (SOLUCIÓN MEMORIA) ---
-    private void loadFromDatabase() {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:hogwarts.db");
-             Statement stmt = conn.createStatement();
-             // Solo traemos lo necesario
-             ResultSet rs = stmt.executeQuery("SELECT id, name, house, wand, image_blob FROM wizards")) {
-
-            System.out.println("Iniciando carga optimizada...");
-            while (rs.next()) {
-                byte[] imgBytes = rs.getBytes("image_blob");
-
-                // AQUÍ ESTÁ EL TRUCO: Pasamos 'null' como imagen visual.
-                // La clase Wizard creará la imagen solo cuando haga falta (Lazy Loading).
-                wizardList.add(new Wizard(
-                        rs.getString("id"),
-                        rs.getString("name"),
-                        rs.getString("house"),
-                        rs.getString("wand"),
-                        null,      // <--- IMAGEN NULL PARA AHORRAR RAM
-                        imgBytes
-                ));
+    // --- CARGA DE DATOS (NUEVO MOTOR, MISMA ESTRUCTURA) ---
+    private void loadFromHeterogeneousFiles() {
+        Map<String, Wizard> tempMap = new HashMap<>();
+        try {
+            // 1. JSON
+            File jsonFile = new File("nombres.json");
+            if (jsonFile.exists()) {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode rootArray = mapper.readTree(jsonFile);
+                if (rootArray.isArray()) {
+                    for (JsonNode node : rootArray) {
+                        Wizard w = new Wizard();
+                        w.setId(node.get("id").asText());
+                        w.setName(node.get("name").asText());
+                        w.setHouse(node.get("house").asText());
+                        tempMap.put(w.getId(), w);
+                    }
+                }
             }
-            System.out.println("✅ Datos cargados: " + wizardList.size());
-        } catch (SQLException e) { System.out.println("❌ Error DB: " + e.getMessage()); }
+            // 2. XML
+            File xmlFile = new File("varitas.xml");
+            if (xmlFile.exists()) {
+                DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+                DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+                Document doc = dBuilder.parse(xmlFile);
+                doc.getDocumentElement().normalize();
+                NodeList nList = doc.getElementsByTagName("Wizard");
+                for (int i = 0; i < nList.getLength(); i++) {
+                    Element el = (Element) nList.item(i);
+                    Wizard w = tempMap.get(el.getAttribute("id"));
+                    if (w != null) w.setWand(el.getElementsByTagName("Wand").item(0).getTextContent());
+                }
+            }
+            // 3. CSV (Base64) - Esto puede tardar unos segundos si hay miles
+            File csvFile = new File("imagenes.csv");
+            if (csvFile.exists()) {
+                try (BufferedReader br = new BufferedReader(new FileReader(csvFile))) {
+                    String line;
+                    boolean header = true;
+                    while ((line = br.readLine()) != null) {
+                        if (header) { header = false; continue; }
+                        String[] parts = line.split(",", 2); // Split solo en la primera coma
+                        if (parts.length == 2) {
+                            Wizard w = tempMap.get(parts[0].trim());
+                            if (w != null && !parts[1].trim().isEmpty()) {
+                                try {
+                                    w.setImageBytes(Base64.getDecoder().decode(parts[1].trim()));
+                                } catch (Exception e) {}
+                            }
+                        }
+                    }
+                }
+            }
+
+            wizardList.clear();
+            List<Wizard> sortedList = new ArrayList<>(tempMap.values());
+            sortedList.sort(Comparator.comparing(Wizard::getName));
+            wizardList.addAll(sortedList);
+
+        } catch (Exception e) { e.printStackTrace(); }
     }
 
-    // --- AÑADIR NUEVO MAGO ---
+    // --- GUARDADO DE DATOS (SINCRONIZACIÓN ARCHIVOS) ---
+    private void saveChangesToFiles() {
+        try {
+            // JSON
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.enable(SerializationFeature.INDENT_OUTPUT);
+            ArrayNode jsonArray = mapper.createArrayNode();
+            for (Wizard w : wizardList) {
+                ObjectNode node = mapper.createObjectNode();
+                node.put("id", w.getId());
+                node.put("name", w.getName());
+                node.put("house", w.getHouse());
+                jsonArray.add(node);
+            }
+            mapper.writeValue(new File("nombres.json"), jsonArray);
+
+            // XML
+            try (PrintWriter pw = new PrintWriter(new FileWriter("varitas.xml", StandardCharsets.UTF_8))) {
+                pw.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+                pw.println("<WizardsWands>");
+                for (Wizard w : wizardList) {
+                    String safe = (w.getWand() == null ? "" : w.getWand()).replace("&", "&amp;").replace("<", "&lt;");
+                    pw.println("  <Wizard id=\"" + w.getId() + "\"><Wand>" + safe + "</Wand></Wizard>");
+                }
+                pw.println("</WizardsWands>");
+            }
+
+            // CSV
+            try (PrintWriter pw = new PrintWriter(new FileWriter("imagenes.csv", StandardCharsets.UTF_8))) {
+                pw.println("id,imagen_base64");
+                for (Wizard w : wizardList) {
+                    String b64 = w.getBase64Image();
+                    pw.println(w.getId() + "," + (b64 != null ? b64 : ""));
+                }
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    // --- DIÁLOGO AÑADIR (Tu UI original + Guardado Archivos) ---
     private void showAddWizardDialog() {
         Dialog<Wizard> dialog = new Dialog<>();
         dialog.setTitle(currentLang.equals("ES") ? "Añadir Nuevo Mago" : "Add New Wizard");
@@ -174,27 +249,23 @@ public class HelloController {
                 if (selectedFile[0] != null) {
                     try {
                         imageBytes = Files.readAllBytes(selectedFile[0].toPath());
-                        // Aquí SÍ creamos la imagen porque es solo una y el usuario quiere verla ya
                         imageObj = new Image(new FileInputStream(selectedFile[0]));
                     } catch (IOException ex) {}
                 }
                 String newId = UUID.randomUUID().toString();
-                saveWizardToDB(newId, nameField.getText(), houseCombo.getValue(), wandField.getText(), imageBytes);
+                // AQUÍ: Ya no llamamos a DB, creamos objeto y retornamos
                 return new Wizard(newId, nameField.getText(), houseCombo.getValue(), wandField.getText(), imageObj, imageBytes);
             }
             return null;
         });
-        Optional<Wizard> result = dialog.showAndWait();
-        result.ifPresent(wizard -> { wizardList.add(0, wizard); updatePagination(); });
-    }
 
-    private void saveWizardToDB(String id, String name, String house, String wand, byte[] imageBytes) {
-        String sql = "INSERT INTO wizards(id, name, house, wand, image_blob) VALUES(?, ?, ?, ?, ?)";
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:hogwarts.db");
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, id); pstmt.setString(2, name); pstmt.setString(3, house); pstmt.setString(4, wand); pstmt.setBytes(5, imageBytes);
-            pstmt.executeUpdate();
-        } catch (SQLException e) { System.out.println("❌ Error SQL: " + e.getMessage()); }
+        Optional<Wizard> result = dialog.showAndWait();
+        result.ifPresent(wizard -> {
+            wizardList.add(0, wizard);
+            // NUEVO: Guardar en archivos
+            saveChangesToFiles();
+            updatePagination();
+        });
     }
 
     private void deleteWizard(Wizard w) {
@@ -208,20 +279,18 @@ public class HelloController {
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:hogwarts.db");
-                 PreparedStatement pstmt = conn.prepareStatement("DELETE FROM wizards WHERE id = ?")) {
-                pstmt.setString(1, w.getId());
-                pstmt.executeUpdate();
-                wizardList.remove(w);
-                rootPane.getChildren().clear(); rootPane.getChildren().add(pagination); updatePagination();
-            } catch (SQLException e) { e.printStackTrace(); }
+            // Eliminar de memoria
+            wizardList.remove(w);
+            // NUEVO: Sincronizar archivos
+            saveChangesToFiles();
+            rootPane.getChildren().clear(); rootPane.getChildren().add(pagination); updatePagination();
         }
     }
 
+    // --- DETALLES (Misma UI exacta) ---
     private void showDetails(Wizard w) {
         VBox details = new VBox(20); details.setAlignment(Pos.CENTER);
         ImageView iv = new ImageView();
-        // Llamamos a w.getImage(), que activará la carga perezosa si no existe
         if (w.getImage() != null && !w.getImage().isError()) iv.setImage(w.getImage()); else iv.setImage(DEFAULT_IMAGE);
         iv.setFitHeight(250); iv.setPreserveRatio(true); iv.getStyleClass().add("detail-image");
         Label title = new Label(w.getName()); title.getStyleClass().add("detail-title");
@@ -233,9 +302,8 @@ public class HelloController {
         Button pdfProfileBtn = new Button("PDF");
         pdfProfileBtn.setStyle("-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
         pdfProfileBtn.setOnAction(e -> {
-            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:hogwarts.db")) {
-                reportService.printWizardProfile(w.getId(), conn, rootPane.getScene().getWindow());
-            } catch (SQLException ex) { ex.printStackTrace(); }
+            // NUEVO: Pasamos el objeto, no la DB
+            reportService.printWizardProfile(w, rootPane.getScene().getWindow());
         });
 
         Button deleteBtn = new Button("Eliminar"); deleteBtn.getStyleClass().add("button-delete");
@@ -246,7 +314,7 @@ public class HelloController {
         rootPane.getChildren().clear(); rootPane.getChildren().add(details);
     }
 
-    // --- UI Helpers ---
+    // --- UI HELPERS (Intactos) ---
     private void updateInterfaceLanguage() {
         String titleText = getText("app_title");
         titleLabel.setText(titleText);
@@ -294,7 +362,6 @@ public class HelloController {
         String h = (w.getHouse() != null) ? w.getHouse().toLowerCase() : "";
         if(h.contains("gryffindor")) c.getStyleClass().add("card-gryffindor"); else if(h.contains("slytherin")) c.getStyleClass().add("card-slytherin"); else if(h.contains("ravenclaw")) c.getStyleClass().add("card-ravenclaw"); else if(h.contains("hufflepuff")) c.getStyleClass().add("card-hufflepuff"); else c.getStyleClass().add("card-default");
         ImageView iv = new ImageView();
-        // Carga Perezosa: Llamamos a w.getImage() solo para las 8 tarjetas visibles
         if(w.getImage()!=null && !w.getImage().isError()) iv.setImage(w.getImage()); else iv.setImage(DEFAULT_IMAGE);
         iv.setFitHeight(140); iv.setFitWidth(140); iv.setPreserveRatio(true);
         StackPane ic = new StackPane(iv); ic.setPrefHeight(140);
