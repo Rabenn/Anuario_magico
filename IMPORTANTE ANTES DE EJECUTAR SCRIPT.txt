@@ -1,0 +1,2 @@
+Ejecuta en el cmd
+pip install requests Pillow
