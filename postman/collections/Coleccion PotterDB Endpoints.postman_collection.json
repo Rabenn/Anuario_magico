@@ -1,0 +1,122 @@
+{
+	"info": {
+		"_postman_id": "19941e0d-9c55-4ba1-8abe-43a350cbaa14",
+		"name": "Coleccion PotterDB Endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "50427665",
+		"_collection_link": "https://rubenxioluna-3475345.postman.co/workspace/apis~6a8d300e-dd6f-4f82-b46f-714e662d9fc3/collection/50427665-19941e0d-9c55-4ba1-8abe-43a350cbaa14?action=share&source=collection_link&creator=50427665"
+	},
+	"item": [
+		{
+			"name": "Todos los personajes",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{url_base}}/characters?page[size]=50",
+					"host": [
+						"{{url_base}}"
+					],
+					"path": [
+						"characters"
+					],
+					"query": [
+						{
+							"key": "page[size]",
+							"value": "50"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Buscar Harry",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{url_base}}/characters?filter[name_cont]=Harry",
+					"host": [
+						"{{url_base}}"
+					],
+					"path": [
+						"characters"
+					],
+					"query": [
+						{
+							"key": "filter[name_cont]",
+							"value": "Harry"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Hechizos",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{url_base}}/spells",
+					"host": [
+						"{{url_base}}"
+					],
+					"path": [
+						"spells"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Peliculas",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{url_base}}/movies",
+					"host": [
+						"{{url_base}}"
+					],
+					"path": [
+						"movies"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "url_base",
+			"value": "https://api.potterdb.com/v1",
+			"type": "string"
+		}
+	]
+}
