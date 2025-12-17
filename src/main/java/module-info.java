@@ -5,6 +5,7 @@ module es.ruben {
     requires jasperreports;
     requires com.fasterxml.jackson.annotation;
     requires com.fasterxml.jackson.databind;
+    requires org.slf4j;
 
     opens es.ruben to javafx.fxml;
     exports es.ruben;
