@@ -80,7 +80,7 @@
                     <execution>
                         <id>default-cli</id>
                         <configuration>
-                            <mainClass>es.ruben.App</mainClass>
+                            <mainClass>es.ruben.Main</mainClass>
                         </configuration>
                     </execution>
                 </executions>
