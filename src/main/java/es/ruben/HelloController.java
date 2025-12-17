@@ -242,6 +242,8 @@ public class HelloController {
     private void showAddWizardDialog() {
         Dialog<Wizard> dialog = new Dialog<>();
         dialog.setTitle(currentLang.equals("ES") ? "Añadir Nuevo Mago" : "Add New Wizard");
+        Stage stage = (Stage) dialog.getDialogPane().getScene().getWindow();
+        stage.getIcons().add(new Image(getClass().getResourceAsStream("images/icono.png")));
         dialog.setHeaderText(null);
         try {
             dialog.getDialogPane().getStylesheets().add(getClass().getResource("css/styles.css").toExternalForm());
@@ -332,15 +334,49 @@ public class HelloController {
 
     private void deleteWizard(Wizard w) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Confirmar");
-        alert.setContentText("¿Eliminar a " + w.getName() + "?");
+        alert.setTitle("Expediente Disciplinario"); // Título más temático
+        alert.setHeaderText("¿Estás seguro de expulsar a " + w.getName() + "?");
+        alert.setContentText("Esta acción es irreversible y se perderán todos los datos del alumno.");
 
+        // 1. AÑADIR ICONO DE LA VENTANA (Tu petición anterior)
+        Stage stage = (Stage) alert.getDialogPane().getScene().getWindow();
+        try {
+            stage.getIcons().add(new Image(getClass().getResourceAsStream("images/icono.png")));
+        } catch (Exception e) { /* Ignorar si no carga */ }
 
+        // 2. AÑADIR LA FOTO DEL MAGO DENTRO DE LA ALERTA
+        if (w.getImage() != null) {
+            ImageView imageView = new ImageView(w.getImage());
+            imageView.setFitHeight(60);
+            imageView.setFitWidth(60);
+
+            // Hacemos la foto redonda para que quede más moderno
+            javafx.scene.shape.Circle clip = new javafx.scene.shape.Circle(30, 30, 30);
+            imageView.setClip(clip);
+
+            alert.setGraphic(imageView);
+        }
+
+        // 3. BOTONES PERSONALIZADOS
+        ButtonType btnEliminar = new ButtonType("Expulsar", ButtonBar.ButtonData.OK_DONE);
+        ButtonType btnCancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        alert.getButtonTypes().setAll(btnEliminar, btnCancelar);
+
+        // 4. ESTILIZAR EL BOTÓN DE ELIMINAR (ROJO)
+        Node deleteButton = alert.getDialogPane().lookupButton(btnEliminar);
+        deleteButton.setStyle("-fx-background-color: #c0392b; -fx-text-fill: white; -fx-font-weight: bold;");
+
+        // LÓGICA DE RESPUESTA
         Optional<ButtonType> result = alert.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
-            logger.info("Eliminando mago: {} (ID: {})", w.getName(), w.getId());
+        if (result.isPresent() && result.get() == btnEliminar) {
+            // Asumo que tienes logger configurado, si no usa System.out
+            // logger.info("Eliminando mago: {} (ID: {})", w.getName(), w.getId());
+
             wizardList.remove(w);
             saveChangesToFiles();
+
+            // Refrescar UI
             rootPane.getChildren().clear();
             rootPane.getChildren().add(pagination);
             updatePagination();
@@ -412,7 +448,7 @@ public class HelloController {
             }
         } else {
             switch(key){
-                case "app_title": return "ANUARIO HOGWARTS";
+                case "app_title": return "ANUARIO MÁGICO";
                 case "search_placeholder": return "Buscar alumno...";
                 case "filter_name": return "Nombre";
                 case "filter_house": return "Casa";

@@ -25,7 +25,7 @@
                                         <Image url="https://upload.wikimedia.org/wikipedia/commons/b/b4/Hogwarts-Crest-4.png" />
                                     </image>
                                 </ImageView>
-                                <Label fx:id="titleLabel" text="ANUARIO HOGWARTS">
+                                <Label fx:id="titleLabel" text="ANUARIO MÁGICO">
                                     <font><Font name="System Bold" size="28.0" /></font>
                                 </Label>
                                 <Button fx:id="addBtn" text="+" style="-fx-font-size: 18px; -fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" />
