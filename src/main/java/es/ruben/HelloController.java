@@ -31,6 +31,23 @@ import java.util.*;
 import javafx.scene.shape.Circle;
 import javafx.util.Duration; // Importante para el tiempo del tooltip
 
+/**
+ * <h2>Controlador de la Vista Principal - HelloController</h2>
+ * Esta clase actúa como el cerebro de la aplicación, gestionando la interacción
+ * entre el usuario y los datos del Anuario Mágico.
+ * * <p>Sus funciones principales incluyen:</p>
+ * <ul>
+ * <li><b>Persistencia Políglota:</b> Carga y guarda datos combinando JSON, XML y CSV.</li>
+ * <li><b>Gestión de UI:</b> Controla la paginación, filtros de búsqueda y cambio de idioma (ES/EN).</li>
+ * <li><b>CRUD:</b> Permite añadir y eliminar registros de magos con persistencia inmediata.</li>
+ * <li><b>Reportes:</b> Conecta con el servicio de impresión de PDFs.</li>
+ * </ul>
+ * @author Unai
+ * @author Igor
+ * @author Ruben
+ * @version 1.0
+ */
+
 public class HelloController {
 
     @FXML private Label titleLabel;
@@ -52,6 +69,11 @@ public class HelloController {
     private final ReportService reportService = new ReportService();
     private Wizard currentWizard = null;
 
+    /**
+     * Inicializa el controlador al cargar la vista FXML.
+     * Configura los listeners de los componentes, carga los archivos de datos
+     * y prepara la paginación de la interfaz.
+     */
     @FXML
     public void initialize() {
         loadFromHeterogeneousFiles();
@@ -103,6 +125,16 @@ public class HelloController {
     // -----------------------------------------
 
     // --- CARGA DE DATOS ---
+
+    /**
+     * Sistema de carga de archivos heterogéneos.
+     * Combina datos de tres fuentes distintas para reconstruir los objetos Wizard:
+     * <ul>
+     * <li><b>JSON:</b> Atributos básicos (nombre, id, casa).</li>
+     * <li><b>XML:</b> Información sobre las varitas.</li>
+     * <li><b>CSV:</b> Imágenes codificadas en Base64.</li>
+     * </ul>
+     */
     private void loadFromHeterogeneousFiles() {
         Map<String, Wizard> tempMap = new HashMap<>();
         try {
@@ -159,6 +191,10 @@ public class HelloController {
         } catch (Exception e) { e.printStackTrace(); }
     }
 
+    /**
+     * Guarda los cambios actuales de la lista de magos en los tres archivos locales.
+     * Sincroniza la información para mantener la integridad entre JSON, XML y CSV.
+     */
     private void saveChangesToFiles() {
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -194,6 +230,10 @@ public class HelloController {
     }
 
     // --- AÑADIR ---
+    /**
+     * Despliega un diálogo interactivo para añadir un nuevo mago al sistema.
+     * Incluye validación de campos y selector de archivos para la imagen.
+     */
     private void showAddWizardDialog() {
         Dialog<Wizard> dialog = new Dialog<>();
         dialog.setTitle(currentLang.equals("ES") ? "Añadir Nuevo Mago" : "Add New Wizard");
@@ -276,6 +316,12 @@ public class HelloController {
     }
 
     // --- BORRAR ---
+    /**
+     * Gestiona el proceso de eliminación de un mago.
+     * Muestra una alerta de confirmación personalizada con la imagen del alumno
+     * y actualiza tanto la memoria como los archivos locales.
+     * * @param w El objeto Wizard que se desea eliminar.
+     */
     private void deleteWizard(Wizard w) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle(currentLang.equals("ES") ? "Expediente Disciplinario" : "Expulsion Record");
@@ -314,6 +360,10 @@ public class HelloController {
     }
 
     // --- DETALLES ---
+    /**
+     * Cambia la vista principal por una vista detallada del mago seleccionado.
+     * @param w El mago cuyos detalles se van a mostrar.
+     */
     private void showDetails(Wizard w) {
         currentWizard = w;
 
@@ -358,6 +408,9 @@ public class HelloController {
     }
 
     // --- INTERFAZ E IDIOMAS ---
+    /**
+     * Actualiza todos los textos de la interfaz según el idioma seleccionado.
+     */
     private void updateInterfaceLanguage() {
         String titleText = getText("app_title");
         titleLabel.setText(titleText);
@@ -390,6 +443,11 @@ public class HelloController {
 
     private void updateFilterCombo() { filterTypeCombo.setItems(FXCollections.observableArrayList(getText("filter_name"), getText("filter_house"), getText("filter_wand"))); }
 
+    /**
+     * Diccionario interno para la internacionalización (I18N).
+     * @param key Clave del texto solicitado.
+     * @return Texto traducido en el idioma actual.
+     */
     private String getText(String key) {
         if (currentLang.equals("EN")) {
             switch(key){
