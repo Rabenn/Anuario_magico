@@ -1,6 +1,5 @@
 package es.ruben;
 
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -26,7 +25,6 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.*;
@@ -34,12 +32,25 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
 
-
+/**
+ * <h2>Controlador de la Vista Principal - HelloController</h2>
+ * Esta clase actúa como el cerebro de la aplicación, gestionando la interacción
+ * entre el usuario y los datos del Anuario Mágico.
+ * * <p>Sus funciones principales incluyen:</p>
+ * <ul>
+ * <li><b>Persistencia Políglota:</b> Carga y guarda datos combinando JSON, XML y CSV.</li>
+ * <li><b>Gestión de UI:</b> Controla la paginación, filtros de búsqueda y cambio de idioma (ES/EN).</li>
+ * <li><b>CRUD:</b> Permite añadir y eliminar registros de magos con persistencia inmediata.</li>
+ * <li><b>Reportes:</b> Conecta con el servicio de impresión de PDFs.</li>
+ * </ul>
+ * * @author Unai
+ * @author Igor
+ * @author Ruben
+ * @version 1.0
+ */
 public class HelloController {
 
-
     private static final Logger logger = LoggerFactory.getLogger(HelloController.class);
-
 
     @FXML private Label titleLabel;
     @FXML private TextField searchField;
@@ -49,76 +60,63 @@ public class HelloController {
     @FXML private Button addBtn;
     @FXML private Button pdfBtn;
 
-
     private ObservableList<Wizard> wizardList = FXCollections.observableArrayList();
     private FilteredList<Wizard> filteredData;
     private Pagination pagination;
     private final int ITEMS_PER_PAGE = 8;
 
-
     private String currentLang = "ES";
     private final Image DEFAULT_IMAGE = new Image("https://img.icons8.com/ios-filled/150/000000/user-male-circle.png", true);
 
-
     private final ReportService reportService = new ReportService();
 
-
+    /**
+     * Inicializa el controlador al cargar la vista FXML.
+     * Configura los listeners de los componentes, carga los archivos de datos
+     * y prepara la paginación de la interfaz.
+     */
     @FXML
     public void initialize() {
-        logger.info("Inicializando HelloController y cargando datos de archivos...");
-
-
         loadFromHeterogeneousFiles();
-
-
         filteredData = new FilteredList<>(wizardList, p -> true);
 
-
-        // Configuración de Idiomas
         langCombo.setItems(FXCollections.observableArrayList("Español", "English"));
         langCombo.getSelectionModel().selectFirst();
         langCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
-            logger.debug("Idioma cambiado a: {}", newVal);
             currentLang = newVal.equals("English") ? "EN" : "ES";
             updateInterfaceLanguage();
             updatePagination();
         });
 
-
-        // Configuración de Filtros
         updateFilterCombo();
         filterTypeCombo.getSelectionModel().selectFirst();
         searchField.textProperty().addListener((obs, oldVal, newVal) -> updateFilter());
         filterTypeCombo.valueProperty().addListener((obs, oldVal, newVal) -> updateFilter());
 
-
-        // Botones Principales
         addBtn.setOnAction(e -> showAddWizardDialog());
-
-
-        pdfBtn.setOnAction(e -> {
-            logger.info("Iniciando generación de reporte PDF del anuario completo.");
-            reportService.printYearbook(new ArrayList<>(wizardList), rootPane.getScene().getWindow());
-        });
-
+        pdfBtn.setOnAction(e -> reportService.printYearbook(new ArrayList<>(wizardList), rootPane.getScene().getWindow()));
 
         if (wizardList.isEmpty()) {
-            logger.warn("No se encontraron datos en los archivos locales (nombres.json, varitas.xml, imagenes.csv).");
             Label emptyLabel = new Label("⚠️ No hay datos. Ejecuta el script Python (ETL) primero.");
             rootPane.getChildren().add(emptyLabel);
         } else {
-            logger.info("Se han cargado {} magos con éxito.", wizardList.size());
             setupPagination();
             updateInterfaceLanguage();
         }
     }
 
-
-    // --- CARGA DE DATOS (LECTURA DE 3 FORMATOS) ---
+    /**
+     * Sistema de carga de archivos heterogéneos.
+     * Combina datos de tres fuentes distintas para reconstruir los objetos Wizard:
+     * <ul>
+     * <li><b>JSON:</b> Atributos básicos (nombre, id, casa).</li>
+     * <li><b>XML:</b> Información sobre las varitas.</li>
+     * <li><b>CSV:</b> Imágenes codificadas en Base64.</li>
+     * </ul>
+     */
     private void loadFromHeterogeneousFiles() {
         Map<String, Wizard> tempMap = new HashMap<>();
         try {
-            // 1. JSON: Nombres e IDs
             File jsonFile = new File("nombres.json");
             if (jsonFile.exists()) {
                 ObjectMapper mapper = new ObjectMapper();
@@ -132,13 +130,8 @@ public class HelloController {
                         tempMap.put(w.getId(), w);
                     }
                 }
-                logger.debug("Cargados {} registros desde nombres.json", tempMap.size());
-            } else {
-                logger.error("Archivo crítico 'nombres.json' no encontrado.");
             }
 
-
-            // 2. XML: Varitas
             File xmlFile = new File("varitas.xml");
             if (xmlFile.exists()) {
                 DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
@@ -151,14 +144,10 @@ public class HelloController {
                     Wizard w = tempMap.get(el.getAttribute("id"));
                     if (w != null) w.setWand(el.getElementsByTagName("Wand").item(0).getTextContent());
                 }
-                logger.debug("Varitas vinculadas desde varitas.xml");
             }
 
-
-            // 3. CSV: Imágenes en Base64
             File csvFile = new File("imagenes.csv");
             if (csvFile.exists()) {
-                int imgCount = 0;
                 try (BufferedReader br = new BufferedReader(new FileReader(csvFile))) {
                     String line;
                     boolean header = true;
@@ -170,7 +159,6 @@ public class HelloController {
                             if (w != null && !parts[1].trim().isEmpty()) {
                                 try {
                                     w.setImageBytes(Base64.getDecoder().decode(parts[1].trim()));
-                                    imgCount++;
                                 } catch (Exception e) {
                                     logger.warn("Error decodificando Base64 para el ID: {}", parts[0]);
                                 }
@@ -178,27 +166,24 @@ public class HelloController {
                         }
                     }
                 }
-                logger.debug("Cargadas {} imágenes desde imagenes.csv", imgCount);
             }
-
 
             wizardList.clear();
             List<Wizard> sortedList = new ArrayList<>(tempMap.values());
             sortedList.sort(Comparator.comparing(Wizard::getName));
             wizardList.addAll(sortedList);
 
-
         } catch (Exception e) {
             logger.error("Error fatal en el motor de carga heterogénea: ", e);
         }
     }
 
-
-    // --- GUARDADO DE DATOS (ESCRITURA EN 3 FORMATOS) ---
+    /**
+     * Guarda los cambios actuales de la lista de magos en los tres archivos locales.
+     * Sincroniza la información para mantener la integridad entre JSON, XML y CSV.
+     */
     private void saveChangesToFiles() {
-        logger.info("Guardando cambios en el sistema de archivos...");
         try {
-            // Guardar JSON
             ObjectMapper mapper = new ObjectMapper();
             mapper.enable(SerializationFeature.INDENT_OUTPUT);
             ArrayNode jsonArray = mapper.createArrayNode();
@@ -211,8 +196,6 @@ public class HelloController {
             }
             mapper.writeValue(new File("nombres.json"), jsonArray);
 
-
-            // Guardar XML
             try (PrintWriter pw = new PrintWriter(new FileWriter("varitas.xml", StandardCharsets.UTF_8))) {
                 pw.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
                 pw.println("<WizardsWands>");
@@ -223,8 +206,6 @@ public class HelloController {
                 pw.println("</WizardsWands>");
             }
 
-
-            // Guardar CSV
             try (PrintWriter pw = new PrintWriter(new FileWriter("imagenes.csv", StandardCharsets.UTF_8))) {
                 pw.println("id,imagen_base64");
                 for (Wizard w : wizardList) {
@@ -232,13 +213,15 @@ public class HelloController {
                     pw.println(w.getId() + "," + (b64 != null ? b64 : ""));
                 }
             }
-            logger.info("Persistencia completada: {} magos sincronizados.", wizardList.size());
         } catch (Exception e) {
             logger.error("Error al intentar persistir los cambios: ", e);
         }
     }
 
-
+    /**
+     * Despliega un diálogo interactivo para añadir un nuevo mago al sistema.
+     * Incluye validación de campos y selector de archivos para la imagen.
+     */
     private void showAddWizardDialog() {
         Dialog<Wizard> dialog = new Dialog<>();
         dialog.setTitle(currentLang.equals("ES") ? "Añadir Nuevo Mago" : "Add New Wizard");
@@ -252,14 +235,11 @@ public class HelloController {
             logger.warn("No se pudo cargar el CSS del diálogo.");
         }
 
-
         ButtonType saveButtonType = new ButtonType(currentLang.equals("ES") ? "Guardar" : "Save", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
 
-
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10); grid.setPadding(new Insets(20, 150, 10, 10));
-
 
         TextField nameField = new TextField();
         String noHouseOption = currentLang.equals("ES") ? "Sin Casa" : "No House";
@@ -268,11 +248,9 @@ public class HelloController {
         houseCombo.setValue(noHouseOption);
         TextField wandField = new TextField();
 
-
         Button imgBtn = new Button(currentLang.equals("ES") ? "Seleccionar Foto..." : "Select Photo...");
         Label imgLabel = new Label(currentLang.equals("ES") ? "Sin archivo" : "No file");
         final File[] selectedFile = {null};
-
 
         imgBtn.setOnAction(e -> {
             FileChooser fileChooser = new FileChooser();
@@ -285,7 +263,6 @@ public class HelloController {
             }
         });
 
-
         grid.add(new Label(currentLang.equals("ES") ? "Nombre:" : "Name:"), 0, 0);
         grid.add(nameField, 1, 0);
         grid.add(new Label(currentLang.equals("ES") ? "Casa:" : "House:"), 0, 1);
@@ -297,11 +274,9 @@ public class HelloController {
         grid.add(imgLabel, 1, 4);
         dialog.getDialogPane().setContent(grid);
 
-
         Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
         saveButton.setDisable(true);
         nameField.textProperty().addListener((o, old, newV) -> saveButton.setDisable(newV.trim().isEmpty()));
-
 
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == saveButtonType) {
@@ -321,102 +296,88 @@ public class HelloController {
             return null;
         });
 
-
         Optional<Wizard> result = dialog.showAndWait();
         result.ifPresent(wizard -> {
-            logger.info("Añadiendo nuevo mago: {}", wizard.getName());
             wizardList.add(0, wizard);
             saveChangesToFiles();
             updatePagination();
         });
     }
 
-
+    /**
+     * Gestiona el proceso de eliminación de un mago.
+     * Muestra una alerta de confirmación personalizada con la imagen del alumno
+     * y actualiza tanto la memoria como los archivos locales.
+     * * @param w El objeto Wizard que se desea eliminar.
+     */
     private void deleteWizard(Wizard w) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Expediente Disciplinario"); // Título más temático
+        alert.setTitle("Expediente Disciplinario");
         alert.setHeaderText("¿Estás seguro de expulsar a " + w.getName() + "?");
         alert.setContentText("Esta acción es irreversible y se perderán todos los datos del alumno.");
 
-        // 1. AÑADIR ICONO DE LA VENTANA (Tu petición anterior)
         Stage stage = (Stage) alert.getDialogPane().getScene().getWindow();
         try {
             stage.getIcons().add(new Image(getClass().getResourceAsStream("images/icono.png")));
-        } catch (Exception e) { /* Ignorar si no carga */ }
+        } catch (Exception e) { }
 
-        // 2. AÑADIR LA FOTO DEL MAGO DENTRO DE LA ALERTA
         if (w.getImage() != null) {
             ImageView imageView = new ImageView(w.getImage());
             imageView.setFitHeight(60);
             imageView.setFitWidth(60);
-
-            // Hacemos la foto redonda para que quede más moderno
             javafx.scene.shape.Circle clip = new javafx.scene.shape.Circle(30, 30, 30);
             imageView.setClip(clip);
-
             alert.setGraphic(imageView);
         }
 
-        // 3. BOTONES PERSONALIZADOS
         ButtonType btnEliminar = new ButtonType("Expulsar", ButtonBar.ButtonData.OK_DONE);
         ButtonType btnCancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
 
         alert.getButtonTypes().setAll(btnEliminar, btnCancelar);
 
-        // 4. ESTILIZAR EL BOTÓN DE ELIMINAR (ROJO)
         Node deleteButton = alert.getDialogPane().lookupButton(btnEliminar);
         deleteButton.setStyle("-fx-background-color: #c0392b; -fx-text-fill: white; -fx-font-weight: bold;");
 
-        // LÓGICA DE RESPUESTA
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == btnEliminar) {
-            // Asumo que tienes logger configurado, si no usa System.out
-            // logger.info("Eliminando mago: {} (ID: {})", w.getName(), w.getId());
-
             wizardList.remove(w);
             saveChangesToFiles();
-
-            // Refrescar UI
             rootPane.getChildren().clear();
             rootPane.getChildren().add(pagination);
             updatePagination();
         }
     }
 
-
+    /**
+     * Cambia la vista principal por una vista detallada del mago seleccionado.
+     * @param w El mago cuyos detalles se van a mostrar.
+     */
     private void showDetails(Wizard w) {
-        logger.debug("Mostrando detalles de: {}", w.getName());
         VBox details = new VBox(20); details.setAlignment(Pos.CENTER);
         ImageView iv = new ImageView();
         if (w.getImage() != null && !w.getImage().isError()) iv.setImage(w.getImage()); else iv.setImage(DEFAULT_IMAGE);
         iv.setFitHeight(250); iv.setPreserveRatio(true); iv.getStyleClass().add("detail-image");
         Label title = new Label(w.getName()); title.getStyleClass().add("detail-title");
 
-
         HBox buttonsBox = new HBox(20); buttonsBox.setAlignment(Pos.CENTER);
         Button backBtn = new Button(getText("btn_back")); backBtn.getStyleClass().add("button-back");
         backBtn.setOnAction(e -> { rootPane.getChildren().clear(); rootPane.getChildren().add(pagination); });
 
-
         Button pdfProfileBtn = new Button("PDF");
         pdfProfileBtn.setStyle("-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-weight: bold;");
-        pdfProfileBtn.setOnAction(e -> {
-            logger.info("Generando PDF individual para {}", w.getName());
-            reportService.printWizardProfile(w, rootPane.getScene().getWindow());
-        });
-
+        pdfProfileBtn.setOnAction(e -> reportService.printWizardProfile(w, rootPane.getScene().getWindow()));
 
         Button deleteBtn = new Button("Eliminar"); deleteBtn.getStyleClass().add("button-delete");
         deleteBtn.setOnAction(e -> deleteWizard(w));
-
 
         buttonsBox.getChildren().addAll(backBtn, pdfProfileBtn, deleteBtn);
         details.getChildren().addAll(iv, title, new Label(getText("label_house") + w.getHouse()), new Label(getText("label_wand") + w.getWand()), buttonsBox);
         rootPane.getChildren().clear(); rootPane.getChildren().add(details);
     }
 
-
-    // --- MÉTODOS DE SOPORTE (UI e IDIOMAS) ---
+    /**
+     * Actualiza todos los textos de la interfaz según el idioma seleccionado.
+     */
     private void updateInterfaceLanguage() {
         String titleText = getText("app_title");
         titleLabel.setText(titleText);
@@ -429,10 +390,13 @@ public class HelloController {
         if (idx >= 0) filterTypeCombo.getSelectionModel().select(idx);
     }
 
-
     private void updateFilterCombo() { filterTypeCombo.setItems(FXCollections.observableArrayList(getText("filter_name"), getText("filter_house"), getText("filter_wand"))); }
 
-
+    /**
+     * Diccionario interno para la internacionalización (I18N).
+     * @param key Clave del texto solicitado.
+     * @return Texto traducido en el idioma actual.
+     */
     private String getText(String key) {
         if (currentLang.equals("EN")) {
             switch(key){
@@ -461,7 +425,10 @@ public class HelloController {
         }
     }
 
-
+    /**
+     * Aplica el predicado de filtrado a la lista observable según el
+     * texto introducido y el tipo de filtro seleccionado.
+     */
     private void updateFilter() {
         String txt = searchField.getText();
         int type = filterTypeCombo.getSelectionModel().getSelectedIndex();
@@ -478,21 +445,29 @@ public class HelloController {
         updatePagination();
     }
 
-
+    /**
+     * Configura el componente de paginación inicial.
+     */
     private void setupPagination() {
         pagination = new Pagination(1, 0);
         updatePagination();
         rootPane.getChildren().add(pagination);
     }
 
-
+    /**
+     * Recalcula el número de páginas y refresca la vista tras un cambio en los datos.
+     */
     private void updatePagination() {
         int pc = (int) Math.ceil((double) filteredData.size() / ITEMS_PER_PAGE);
         pagination.setPageCount(pc > 0 ? pc : 1);
         pagination.setPageFactory(this::createPage);
     }
 
-
+    /**
+     * Crea la cuadrícula de elementos (TilePane) para una página específica.
+     * @param idx Índice de la página a generar.
+     * @return El nodo que contiene la visualización de la página.
+     */
     private Node createPage(int idx) {
         TilePane tp = new TilePane(20, 20); tp.setPadding(new Insets(20)); tp.setPrefColumns(4); tp.setAlignment(Pos.TOP_CENTER);
         int start = idx * ITEMS_PER_PAGE; int end = Math.min(start + ITEMS_PER_PAGE, filteredData.size());
@@ -501,7 +476,12 @@ public class HelloController {
         return sp;
     }
 
-
+    /**
+     * Genera un componente visual (tarjeta) para un mago individual.
+     * Aplica estilos CSS dinámicos basados en la casa de Hogwarts.
+     * @param w El mago para el que se crea la tarjeta.
+     * @return Un VBox configurado con la información del mago.
+     */
     private VBox createCard(Wizard w) {
         VBox c = new VBox(10); c.setAlignment(Pos.TOP_CENTER); c.setPrefSize(200, 260); c.getStyleClass().add("card");
         String h = (w.getHouse() != null) ? w.getHouse().toLowerCase() : "";
@@ -511,16 +491,13 @@ public class HelloController {
         else if(h.contains("hufflepuff")) c.getStyleClass().add("card-hufflepuff");
         else c.getStyleClass().add("card-default");
 
-
         ImageView iv = new ImageView();
         if(w.getImage()!=null && !w.getImage().isError()) iv.setImage(w.getImage()); else iv.setImage(DEFAULT_IMAGE);
         iv.setFitHeight(140); iv.setFitWidth(140); iv.setPreserveRatio(true);
 
-
         StackPane ic = new StackPane(iv); ic.setPrefHeight(140);
         Label n = new Label(w.getName()); n.getStyleClass().add("card-title"); n.setWrapText(true); n.setTextAlignment(TextAlignment.CENTER);
         Label hl = new Label(getText("label_house") + w.getHouse()); hl.getStyleClass().add("card-subtitle");
-
 
         c.getChildren().addAll(ic, n, hl);
         c.setOnMouseClicked(e -> showDetails(w));
