@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -12,12 +13,15 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.TextAlignment;
+import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -30,13 +34,14 @@ import org.w3c.dom.NodeList;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.*;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
 
 /**
  * <h2>Controlador de la Vista Principal - HelloController</h2>
- * Versión Unificada: Layout 4x2 Centrado + Tooltips + Mensaje "Sin Resultados".
+ * Versión Final: Ejecuta Python en CMD visible.
  */
 public class HelloController {
 
@@ -50,6 +55,12 @@ public class HelloController {
     @FXML private Button addBtn;
     @FXML private Button pdfBtn;
 
+    // --- Elementos del Menú ---
+    @FXML private Menu menuFile;
+    @FXML private MenuItem menuImportItem;
+    @FXML private Menu menuHelp;
+    @FXML private MenuItem menuManualItem;
+
     private ObservableList<Wizard> wizardList = FXCollections.observableArrayList();
     private FilteredList<Wizard> filteredData;
     private Pagination pagination;
@@ -61,40 +72,313 @@ public class HelloController {
     private final ReportService reportService = new ReportService();
     private Wizard currentWizard = null;
 
+    // CAMBIO 1: Apuntamos al script de Python en lugar del EXE
+    private final String IMPORT_SCRIPT_NAME = "etl_files.py";
+
     @FXML
     public void initialize() {
         loadFromHeterogeneousFiles();
         filteredData = new FilteredList<>(wizardList, p -> true);
 
+        // --- Configuración Menú ---
+        menuImportItem.setOnAction(e -> runImportProcess(null));
+        menuManualItem.setOnAction(e -> openUserManual());
+
         // Configuración de Idiomas
         langCombo.setItems(FXCollections.observableArrayList("Español", "English"));
         langCombo.getSelectionModel().selectFirst();
+
         langCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
             currentLang = newVal.equals("English") ? "EN" : "ES";
             updateInterfaceLanguage();
-            updatePagination();
+            if (wizardList.isEmpty()) {
+                showEmptyState();
+            } else {
+                updatePagination();
+            }
         });
 
-        // Configuración de Filtros
         updateFilterCombo();
         filterTypeCombo.getSelectionModel().selectFirst();
         searchField.textProperty().addListener((obs, oldVal, newVal) -> updateFilter());
         filterTypeCombo.valueProperty().addListener((obs, oldVal, newVal) -> updateFilter());
 
-        // Configuración de Botones
         addBtn.setOnAction(e -> showAddWizardDialog());
         pdfBtn.setOnAction(e -> reportService.printYearbook(new ArrayList<>(wizardList), rootPane.getScene().getWindow()));
 
         if (wizardList.isEmpty()) {
-            Label emptyLabel = new Label("⚠️ No hay datos. Ejecuta el script Python (ETL) primero.");
-            rootPane.getChildren().add(emptyLabel);
+            showEmptyState();
+            updateInterfaceLanguage();
         } else {
             setupPagination();
             updateInterfaceLanguage();
         }
     }
 
-    // --- HELPER PARA TOOLTIPS ---
+    // --- LÓGICA MANUAL DE USUARIO (VISOR INTERNO) ---
+    private void openUserManual() {
+        try {
+            Stage helpStage = new Stage();
+            helpStage.setTitle(getText("menu_manual"));
+
+            try {
+                InputStream iconStream = getClass().getResourceAsStream("images/icono.png");
+                if (iconStream != null) {
+                    helpStage.getIcons().add(new Image(iconStream));
+                }
+            } catch (Exception e) {
+                logger.warn("No se pudo cargar el icono para la ventana de ayuda", e);
+            }
+
+            WebView webView = new WebView();
+            WebEngine webEngine = webView.getEngine();
+
+            String resourcePath = "/es/ruben/MANUAL DE USUARIO/Manual de Usuario RETO3/index.html";
+            URL url = getClass().getResource(resourcePath);
+
+            if (url == null) {
+                showAlert(Alert.AlertType.ERROR, "Error", "No se encuentra el archivo del manual:\n" + resourcePath);
+                return;
+            }
+
+            webEngine.load(url.toExternalForm());
+
+            Scene scene = new Scene(webView, 1000, 700);
+            helpStage.setScene(scene);
+            helpStage.show();
+
+        } catch (Exception e) {
+            logger.error("Error al abrir el manual interno", e);
+            showAlert(Alert.AlertType.ERROR, "Error", "No se pudo abrir el visor de ayuda.\n" + e.getMessage());
+        }
+    }
+
+    private void showAlert(Alert.AlertType type, String title, String content) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        try {
+            Stage stage = (Stage) alert.getDialogPane().getScene().getWindow();
+            stage.getIcons().add(new Image(getClass().getResourceAsStream("images/icono.png")));
+        } catch(Exception ex){}
+        alert.showAndWait();
+    }
+
+    // --- LÓGICA IMPORTACIÓN (CAMBIO PRINCIPAL) ---
+    private void runImportProcess(Button sourceBtn) {
+        if (sourceBtn != null) {
+            sourceBtn.setDisable(true);
+            sourceBtn.setText(currentLang.equals("ES") ? "Abriendo CMD..." : "Opening CMD...");
+        }
+        menuImportItem.setDisable(true);
+
+        Thread taskThread = new Thread(() -> {
+            try {
+                File scriptFile = new File(IMPORT_SCRIPT_NAME);
+                if (!scriptFile.exists()) throw new FileNotFoundException("Script no encontrado: " + IMPORT_SCRIPT_NAME);
+
+                // --- COMANDO PARA ABRIR CMD VISIBLE ---
+                // "cmd /c start /wait" -> Abre una ventana nueva y ESPERA a que la cierres
+                // "cmd /k python..." -> Ejecuta python y MANTIENE la ventana abierta (para ver errores)
+                ProcessBuilder pb = new ProcessBuilder(
+                        "cmd", "/c", "start", "/wait", "cmd", "/k", "python " + IMPORT_SCRIPT_NAME
+                );
+
+                Process process = pb.start();
+
+                // Java se quedará congelado en esta línea hasta que TÚ cierres la ventana negra del CMD
+                int exitCode = process.waitFor();
+
+                Platform.runLater(() -> {
+                    // Al cerrar la ventana, asumimos que el usuario ya terminó
+                    loadFromHeterogeneousFiles();
+
+                    if (!wizardList.isEmpty()) {
+                        rootPane.getChildren().clear();
+                        setupPagination();
+                        updateInterfaceLanguage();
+                        showAlert(Alert.AlertType.INFORMATION, "Importación", getText("msg_import_success"));
+                    } else {
+                        // Si cerro la ventana y sigue vacío, quizás dio error el python
+                        if (sourceBtn != null) resetImportButton(sourceBtn);
+                    }
+                    menuImportItem.setDisable(false);
+                });
+
+            } catch (Exception e) {
+                logger.error("Error lanzando proceso de importación", e);
+                Platform.runLater(() -> {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Error al abrir el script:\n" + e.getMessage());
+                    if (sourceBtn != null) resetImportButton(sourceBtn);
+                    menuImportItem.setDisable(false);
+                });
+            }
+        });
+        taskThread.start();
+    }
+
+    private void resetImportButton(Button btn) {
+        btn.setDisable(false);
+        btn.setText(getText("btn_import_big"));
+    }
+
+    // --- ACTUALIZACIÓN IDIOMAS ---
+    private void updateInterfaceLanguage() {
+        String titleText = getText("app_title");
+        titleLabel.setText(titleText);
+        searchField.setPromptText(getText("search_placeholder"));
+
+        menuFile.setText(getText("menu_file"));
+        menuImportItem.setText(getText("menu_import"));
+        menuHelp.setText(getText("menu_help"));
+        menuManualItem.setText(getText("menu_manual"));
+
+        addBtn.setText(getText("btn_add"));
+        addBtn.setGraphic(createIconLabel("✚"));
+        addBtn.setContentDisplay(ContentDisplay.LEFT);
+
+        pdfBtn.setText(getText("btn_pdf"));
+        pdfBtn.setGraphic(createIconLabel("📄"));
+        pdfBtn.setContentDisplay(ContentDisplay.LEFT);
+
+        addBtn.setTooltip(createTooltip(getText("tooltip_add")));
+        pdfBtn.setTooltip(createTooltip(getText("tooltip_pdf_main")));
+        searchField.setTooltip(createTooltip(getText("tooltip_search")));
+        filterTypeCombo.setTooltip(createTooltip(getText("tooltip_filter")));
+        langCombo.setTooltip(createTooltip(getText("tooltip_lang")));
+
+        if (rootPane.getScene() != null && rootPane.getScene().getWindow() != null) {
+            ((Stage) rootPane.getScene().getWindow()).setTitle(titleText);
+        }
+
+        int idx = filterTypeCombo.getSelectionModel().getSelectedIndex();
+        updateFilterCombo();
+        if (idx >= 0) filterTypeCombo.getSelectionModel().select(idx);
+
+        if (currentWizard != null) showDetails(currentWizard);
+    }
+
+    // --- TEXTOS E IDIOMAS ---
+    private String getText(String key) {
+        if (currentLang.equals("EN")) {
+            switch(key){
+                case "app_title": return "HOGWARTS YEARBOOK";
+                case "search_placeholder": return "Search wizard...";
+                case "filter_name": return "Name";
+                case "filter_house": return "House";
+                case "filter_wand": return "Wand";
+                case "label_house": return "House: ";
+                case "label_wand": return "Wand: ";
+                case "btn_back": return "Back to list";
+                case "btn_delete": return "Expel";
+                case "btn_add": return "ADD";
+                case "btn_pdf": return "PDF";
+
+                case "menu_file": return "File";
+                case "menu_import": return "Run Import Script (Python)...";
+                case "menu_help": return "Help";
+                case "menu_manual": return "User Manual";
+
+                case "btn_import_big": return "RUN PYTHON SCRIPT";
+                case "msg_empty_db": return "No wizards found in the database.";
+                case "msg_click_import": return "Click below to open the Python ETL script in CMD:";
+
+                case "tooltip_add": return "Add a new wizard to the database";
+                case "tooltip_pdf_main": return "Generate full yearbook PDF";
+                case "tooltip_import": return "Open external Python script";
+                case "tooltip_search": return "Type to filter by text";
+                case "tooltip_filter": return "Select filter criteria";
+                case "tooltip_lang": return "Change application language";
+                case "tooltip_back": return "Return to wizard list";
+                case "tooltip_pdf_profile": return "Generate profile PDF for this wizard";
+                case "tooltip_delete": return "Permanently expel this wizard";
+                case "tooltip_photo": return "Select an image file (JPG/PNG)";
+                case "tooltip_card": return "Click to view details";
+                case "msg_no_results": return "🔍 No matches found for these criteria.";
+                case "msg_import_success": return "Data reloaded successfully!";
+                case "msg_import_error": return "Error importing data.";
+                default: return key;
+            }
+        } else {
+            switch(key){
+                case "app_title": return "ANUARIO MÁGICO";
+                case "search_placeholder": return "Buscar alumno...";
+                case "filter_name": return "Nombre";
+                case "filter_house": return "Casa";
+                case "filter_wand": return "Varita";
+                case "label_house": return "Casa: ";
+                case "label_wand": return "Varita: ";
+                case "btn_back": return "Volver al listado";
+                case "btn_delete": return "Expulsar";
+                case "btn_add": return "AÑADIR";
+                case "btn_pdf": return "PDF";
+
+                case "menu_file": return "Archivo";
+                case "menu_import": return "Ejecutar Script Python...";
+                case "menu_help": return "Ayuda";
+                case "menu_manual": return "Manual de Usuario";
+
+                case "btn_import_big": return "EJECUTAR SCRIPT PYTHON";
+                case "msg_empty_db": return "No hay alumnos en la base de datos.";
+                case "msg_click_import": return "Haz clic abajo para abrir el script Python en CMD:";
+
+                case "tooltip_add": return "Añadir nuevo mago a la base de datos";
+                case "tooltip_pdf_main": return "Generar anuario completo en PDF";
+                case "tooltip_import": return "Abrir script externo de Python";
+                case "tooltip_search": return "Escribe para filtrar por texto";
+                case "tooltip_filter": return "Seleccionar criterio de filtro";
+                case "tooltip_lang": return "Cambiar idioma de la aplicación";
+                case "tooltip_back": return "Volver al listado de alumnos";
+                case "tooltip_pdf_profile": return "Generar perfil PDF de este mago";
+                case "tooltip_delete": return "Expulsar permanentemente a este alumno";
+                case "tooltip_photo": return "Seleccionar archivo de imagen (JPG/PNG)";
+                case "tooltip_card": return "Haz click para ver detalles";
+                case "msg_no_results": return "🔍 No existen coincidencias con esos criterios.";
+                case "msg_import_success": return "¡Datos recargados correctamente!";
+                case "msg_import_error": return "Error al importar datos.";
+                default: return key;
+            }
+        }
+    }
+
+    private void updatePagination() {
+        if (pagination == null) return;
+        int pc = (int) Math.ceil((double) filteredData.size() / ITEMS_PER_PAGE);
+        pagination.setPageCount(pc > 0 ? pc : 1);
+        pagination.setPageFactory(this::createPage);
+    }
+
+    private void showEmptyState() {
+        rootPane.getChildren().clear();
+        pagination = null;
+
+        Label emptyLabel = new Label(getText("msg_empty_db"));
+        emptyLabel.setStyle("-fx-font-size: 24px; -fx-text-fill: #7f8c8d;");
+
+        Label instructionLabel = new Label(getText("msg_click_import"));
+        instructionLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #95a5a6;");
+
+        Button btnImport = new Button(getText("btn_import_big"));
+        btnImport.setStyle("-fx-font-size: 16px; -fx-background-color: #e67e22; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-cursor: hand;");
+        btnImport.setTooltip(createTooltip(getText("tooltip_import")));
+
+        btnImport.setGraphic(createIconLabel("📥"));
+        btnImport.setContentDisplay(ContentDisplay.LEFT);
+
+        btnImport.setOnAction(e -> runImportProcess(btnImport));
+
+        VBox box = new VBox(20, emptyLabel, instructionLabel, btnImport);
+        box.setAlignment(Pos.CENTER);
+        rootPane.getChildren().add(box);
+    }
+
+    private Label createIconLabel(String symbol) {
+        Label l = new Label(symbol);
+        l.setStyle("-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold; -fx-padding: 0 5 0 0;");
+        return l;
+    }
+
     private Tooltip createTooltip(String text) {
         Tooltip t = new Tooltip(text);
         t.setStyle("-fx-font-size: 11px; -fx-padding: 4px 8px; -fx-background-color: rgba(30,30,30,0.9); -fx-text-fill: white;");
@@ -102,7 +386,90 @@ public class HelloController {
         return t;
     }
 
-    // --- CARGA Y PERSISTENCIA ---
+    private void updateFilterCombo() {
+        filterTypeCombo.setItems(FXCollections.observableArrayList(getText("filter_name"), getText("filter_house"), getText("filter_wand")));
+    }
+
+    private void setupPagination() {
+        pagination = new Pagination(1, 0);
+        updatePagination();
+        rootPane.getChildren().add(pagination);
+    }
+
+    private void updateFilter() {
+        String txt = searchField.getText();
+        int type = filterTypeCombo.getSelectionModel().getSelectedIndex();
+        filteredData.setPredicate(w -> {
+            if (txt == null || txt.isEmpty()) return true;
+            String l = txt.toLowerCase();
+            switch(type){
+                case 0: return w.getName().toLowerCase().contains(l);
+                case 1: return w.getHouse().toLowerCase().contains(l);
+                case 2: return w.getWand().toLowerCase().contains(l);
+                default: return true;
+            }
+        });
+        updatePagination();
+    }
+
+    // --- LÓGICA DE CARGA Y RENDERIZADO (Sin cambios) ---
+    private Node createPage(int idx) {
+        if (filteredData.isEmpty()) {
+            Label noResultsLabel = new Label(getText("msg_no_results"));
+            noResultsLabel.setStyle("-fx-font-size: 20px; -fx-text-fill: #95a5a6; -fx-font-weight: bold;");
+            VBox emptyBox = new VBox(noResultsLabel);
+            emptyBox.setAlignment(Pos.CENTER);
+            emptyBox.setPadding(new Insets(50));
+            return emptyBox;
+        }
+
+        TilePane tp = new TilePane(20, 20);
+        tp.setPadding(new Insets(20));
+        tp.setPrefColumns(4);
+        tp.setAlignment(Pos.TOP_CENTER);
+        tp.setPrefWidth(200 * 4 + 20 * 3 + 40);
+        tp.setMaxWidth(Region.USE_PREF_SIZE);
+
+        int start = idx * ITEMS_PER_PAGE;
+        int end = Math.min(start + ITEMS_PER_PAGE, filteredData.size());
+        for (int i = start; i < end; i++) {
+            tp.getChildren().add(createCard(filteredData.get(i)));
+        }
+
+        HBox centeringWrapper = new HBox(tp);
+        centeringWrapper.setAlignment(Pos.CENTER);
+        centeringWrapper.setFillHeight(true);
+
+        ScrollPane sp = new ScrollPane(centeringWrapper);
+        sp.setFitToWidth(true);
+        sp.setStyle("-fx-background-color:transparent; -fx-background: transparent;");
+        return sp;
+    }
+
+    private VBox createCard(Wizard w) {
+        VBox c = new VBox(10); c.setAlignment(Pos.TOP_CENTER); c.setPrefSize(200, 260); c.getStyleClass().add("card");
+        String h = (w.getHouse() != null) ? w.getHouse().toLowerCase() : "";
+        if(h.contains("gryffindor")) c.getStyleClass().add("card-gryffindor");
+        else if(h.contains("slytherin")) c.getStyleClass().add("card-slytherin");
+        else if(h.contains("ravenclaw")) c.getStyleClass().add("card-ravenclaw");
+        else if(h.contains("hufflepuff")) c.getStyleClass().add("card-hufflepuff");
+        else c.getStyleClass().add("card-default");
+
+        Tooltip.install(c, createTooltip(getText("tooltip_card")));
+
+        ImageView iv = new ImageView();
+        if(w.getImage()!=null && !w.getImage().isError()) iv.setImage(w.getImage()); else iv.setImage(DEFAULT_IMAGE);
+        iv.setFitHeight(140); iv.setFitWidth(140); iv.setPreserveRatio(true);
+
+        StackPane ic = new StackPane(iv); ic.setPrefHeight(140);
+        Label n = new Label(w.getName()); n.getStyleClass().add("card-title"); n.setWrapText(true); n.setTextAlignment(TextAlignment.CENTER);
+        Label hl = new Label(getText("label_house") + w.getHouse()); hl.getStyleClass().add("card-subtitle");
+
+        c.getChildren().addAll(ic, n, hl);
+        c.setOnMouseClicked(e -> showDetails(w));
+        return c;
+    }
+
     private void loadFromHeterogeneousFiles() {
         Map<String, Wizard> tempMap = new HashMap<>();
         try {
@@ -201,7 +568,6 @@ public class HelloController {
         }
     }
 
-    // --- ACCIONES CRUD ---
     private void showAddWizardDialog() {
         Dialog<Wizard> dialog = new Dialog<>();
         dialog.setTitle(currentLang.equals("ES") ? "Añadir Nuevo Mago" : "Add New Wizard");
@@ -274,9 +640,16 @@ public class HelloController {
 
         Optional<Wizard> result = dialog.showAndWait();
         result.ifPresent(wizard -> {
+            boolean wasEmpty = wizardList.isEmpty();
             wizardList.add(0, wizard);
             saveChangesToFiles();
-            updatePagination();
+            if (wasEmpty) {
+                rootPane.getChildren().clear();
+                setupPagination();
+                updateInterfaceLanguage();
+            } else {
+                updatePagination();
+            }
         });
     }
 
@@ -308,8 +681,14 @@ public class HelloController {
             saveChangesToFiles();
             currentWizard = null;
             rootPane.getChildren().clear();
-            rootPane.getChildren().add(pagination);
-            updatePagination();
+
+            if (wizardList.isEmpty()) {
+                showEmptyState();
+                updateInterfaceLanguage();
+            } else {
+                setupPagination();
+                updatePagination();
+            }
         }
     }
 
@@ -347,183 +726,5 @@ public class HelloController {
 
         rootPane.getChildren().clear();
         rootPane.getChildren().add(details);
-    }
-
-    // --- INTERFAZ I18N ---
-    private void updateInterfaceLanguage() {
-        String titleText = getText("app_title");
-        titleLabel.setText(titleText);
-        searchField.setPromptText(getText("search_placeholder"));
-        addBtn.setText(getText("btn_add"));
-        pdfBtn.setText(getText("btn_pdf"));
-
-        addBtn.setTooltip(createTooltip(getText("tooltip_add")));
-        pdfBtn.setTooltip(createTooltip(getText("tooltip_pdf_main")));
-        searchField.setTooltip(createTooltip(getText("tooltip_search")));
-        filterTypeCombo.setTooltip(createTooltip(getText("tooltip_filter")));
-        langCombo.setTooltip(createTooltip(getText("tooltip_lang")));
-
-        if (rootPane.getScene() != null && rootPane.getScene().getWindow() != null) {
-            ((Stage) rootPane.getScene().getWindow()).setTitle(titleText);
-        }
-        int idx = filterTypeCombo.getSelectionModel().getSelectedIndex();
-        updateFilterCombo();
-        if (idx >= 0) filterTypeCombo.getSelectionModel().select(idx);
-
-        if (currentWizard != null) showDetails(currentWizard);
-    }
-
-    private void updateFilterCombo() {
-        filterTypeCombo.setItems(FXCollections.observableArrayList(getText("filter_name"), getText("filter_house"), getText("filter_wand")));
-    }
-
-    private String getText(String key) {
-        if (currentLang.equals("EN")) {
-            switch(key){
-                case "app_title": return "HOGWARTS YEARBOOK";
-                case "search_placeholder": return "Search wizard...";
-                case "filter_name": return "Name";
-                case "filter_house": return "House";
-                case "filter_wand": return "Wand";
-                case "label_house": return "House: ";
-                case "label_wand": return "Wand: ";
-                case "btn_back": return "Back to list";
-                case "btn_delete": return "Expel";
-                case "btn_add": return "Add";
-                case "btn_pdf": return "PDF";
-                case "tooltip_add": return "Add a new wizard to the database";
-                case "tooltip_pdf_main": return "Generate full yearbook PDF";
-                case "tooltip_search": return "Type to filter by text";
-                case "tooltip_filter": return "Select filter criteria";
-                case "tooltip_lang": return "Change application language";
-                case "tooltip_back": return "Return to wizard list";
-                case "tooltip_pdf_profile": return "Generate profile PDF for this wizard";
-                case "tooltip_delete": return "Permanently expel this wizard";
-                case "tooltip_photo": return "Select an image file (JPG/PNG)";
-                case "tooltip_card": return "Click to view details";
-                // --- NUEVO CASO ---
-                case "msg_no_results": return "🔍 No matches found for these criteria.";
-                default: return key;
-            }
-        } else {
-            switch(key){
-                case "app_title": return "ANUARIO HOGWARTS";
-                case "search_placeholder": return "Buscar alumno...";
-                case "filter_name": return "Nombre";
-                case "filter_house": return "Casa";
-                case "filter_wand": return "Varita";
-                case "label_house": return "Casa: ";
-                case "label_wand": return "Varita: ";
-                case "btn_back": return "Volver al listado";
-                case "btn_delete": return "Expulsar";
-                case "btn_add": return "Añadir";
-                case "btn_pdf": return "PDF";
-                case "tooltip_add": return "Añadir nuevo mago a la base de datos";
-                case "tooltip_pdf_main": return "Generar anuario completo en PDF";
-                case "tooltip_search": return "Escribe para filtrar por texto";
-                case "tooltip_filter": return "Seleccionar criterio de filtro";
-                case "tooltip_lang": return "Cambiar idioma de la aplicación";
-                case "tooltip_back": return "Volver al listado de alumnos";
-                case "tooltip_pdf_profile": return "Generar perfil PDF de este mago";
-                case "tooltip_delete": return "Expulsar permanentemente a este alumno";
-                case "tooltip_photo": return "Seleccionar archivo de imagen (JPG/PNG)";
-                case "tooltip_card": return "Haz click para ver detalles";
-                // --- NUEVO CASO ---
-                case "msg_no_results": return "🔍 No existen coincidencias con esos criterios.";
-                default: return key;
-            }
-        }
-    }
-
-    private void updateFilter() {
-        String txt = searchField.getText();
-        int type = filterTypeCombo.getSelectionModel().getSelectedIndex();
-        filteredData.setPredicate(w -> {
-            if (txt == null || txt.isEmpty()) return true;
-            String l = txt.toLowerCase();
-            switch(type){
-                case 0: return w.getName().toLowerCase().contains(l);
-                case 1: return w.getHouse().toLowerCase().contains(l);
-                case 2: return w.getWand().toLowerCase().contains(l);
-                default: return true;
-            }
-        });
-        updatePagination();
-    }
-
-    private void setupPagination() {
-        pagination = new Pagination(1, 0);
-        updatePagination();
-        rootPane.getChildren().add(pagination);
-    }
-
-    private void updatePagination() {
-        int pc = (int) Math.ceil((double) filteredData.size() / ITEMS_PER_PAGE);
-        pagination.setPageCount(pc > 0 ? pc : 1);
-        pagination.setPageFactory(this::createPage);
-    }
-
-    // --- PAGINACIÓN Y CARDS (LAYOUT 4x2 CENTRADO) ---
-    private Node createPage(int idx) {
-
-        // --- CAMBIO: DETECTAR SI NO HAY RESULTADOS ---
-        if (filteredData.isEmpty()) {
-            Label noResultsLabel = new Label(getText("msg_no_results"));
-            noResultsLabel.setStyle("-fx-font-size: 20px; -fx-text-fill: #95a5a6; -fx-font-weight: bold;");
-
-            VBox emptyBox = new VBox(noResultsLabel);
-            emptyBox.setAlignment(Pos.CENTER);
-            emptyBox.setPadding(new Insets(50));
-            return emptyBox;
-        }
-        // ----------------------------------------------
-
-        TilePane tp = new TilePane(20, 20);
-        tp.setPadding(new Insets(20));
-        tp.setPrefColumns(4);
-        tp.setAlignment(Pos.TOP_CENTER);
-
-        // Forzar ancho para 4 columnas (tarjeta 200px + gap 20px)
-        tp.setPrefWidth(200 * 4 + 20 * 3 + 40);
-        tp.setMaxWidth(Region.USE_PREF_SIZE);
-
-        int start = idx * ITEMS_PER_PAGE;
-        int end = Math.min(start + ITEMS_PER_PAGE, filteredData.size());
-        for (int i = start; i < end; i++) {
-            tp.getChildren().add(createCard(filteredData.get(i)));
-        }
-
-        HBox centeringWrapper = new HBox(tp);
-        centeringWrapper.setAlignment(Pos.CENTER);
-        centeringWrapper.setFillHeight(true);
-
-        ScrollPane sp = new ScrollPane(centeringWrapper);
-        sp.setFitToWidth(true);
-        sp.setStyle("-fx-background-color:transparent; -fx-background: transparent;");
-        return sp;
-    }
-
-    private VBox createCard(Wizard w) {
-        VBox c = new VBox(10); c.setAlignment(Pos.TOP_CENTER); c.setPrefSize(200, 260); c.getStyleClass().add("card");
-        String h = (w.getHouse() != null) ? w.getHouse().toLowerCase() : "";
-        if(h.contains("gryffindor")) c.getStyleClass().add("card-gryffindor");
-        else if(h.contains("slytherin")) c.getStyleClass().add("card-slytherin");
-        else if(h.contains("ravenclaw")) c.getStyleClass().add("card-ravenclaw");
-        else if(h.contains("hufflepuff")) c.getStyleClass().add("card-hufflepuff");
-        else c.getStyleClass().add("card-default");
-
-        Tooltip.install(c, createTooltip(getText("tooltip_card")));
-
-        ImageView iv = new ImageView();
-        if(w.getImage()!=null && !w.getImage().isError()) iv.setImage(w.getImage()); else iv.setImage(DEFAULT_IMAGE);
-        iv.setFitHeight(140); iv.setFitWidth(140); iv.setPreserveRatio(true);
-
-        StackPane ic = new StackPane(iv); ic.setPrefHeight(140);
-        Label n = new Label(w.getName()); n.getStyleClass().add("card-title"); n.setWrapText(true); n.setTextAlignment(TextAlignment.CENTER);
-        Label hl = new Label(getText("label_house") + w.getHouse()); hl.getStyleClass().add("card-subtitle");
-
-        c.getChildren().addAll(ic, n, hl);
-        c.setOnMouseClicked(e -> showDetails(w));
-        return c;
     }
 }

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentación Técnica y Manual de Usuario - Anuario Mágico</title>
+    <link rel="stylesheet" href="estilos/estilos.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Anuario Mágico</h1>
+            <p class="subtitle">Sistema Integral de Gestión de Alumnado de Hogwarts v1.0</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <nav class="toc">
+            <h3>Contenidos de la Documentación</h3>
+            <ul>
+                <li><a href="#introduccion">1. Introducción al Proyecto</a></li>
+                <li><a href="#arquitectura">2. Arquitectura de Datos (Persistencia Políglota)</a></li>
+                <li><a href="#instalacion">3. Requisitos e Instalación</a></li>
+                <li><a href="#interfaz">4. Manual de la Interfaz Gráfica</a></li>
+                <li><a href="#operaciones">5. Guía de Operaciones (CRUD)</a></li>
+                <li><a href="#reportes">6. Motor de Reportes (JasperReports)</a></li>
+                <li><a href="#resolucion">7. Resolución de Problemas</a></li>
+            </ul>
+        </nav>
+
+        <section id="introduccion">
+            <h2>1. Introducción al Proyecto</h2>
+            <p>El <strong>Anuario Mágico</strong> es una aplicación de escritorio desarrollada en <strong>Java 17+</strong> utilizando el framework <strong>JavaFX</strong>. El objetivo principal es ofrecer una herramienta administrativa para el personal de Hogwarts que permita gestionar el censo de estudiantes, sus pertenencias (varitas) y su registro visual.</p>
+            <p>Este proyecto destaca por su capacidad de integrar múltiples formatos de almacenamiento de forma simultánea, garantizando la integridad de la información a través de una arquitectura desacoplada.</p>
+        </section>
+
+        <section id="arquitectura">
+            <h2>2. Arquitectura de Datos</h2>
+            <p>La aplicación implementa una estrategia de persistencia heterogénea. Esto significa que un único objeto "Mago" se fragmenta en tres archivos distintos para optimizar el acceso y la lectura:</p>
+            
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Archivo</th>
+                        <th>Formato</th>
+                        <th>Datos Almacenados</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>nombres.json</code></td>
+                        <td>JSON</td>
+                        <td>Identificadores únicos (UUID), nombres completos y casas asignadas.</td>
+                    </tr>
+                    <tr>
+                        <td><code>varitas.xml</code></td>
+                        <td>XML</td>
+                        <td>Descripción técnica de la varita asociada a cada ID.</td>
+                    </tr>
+                    <tr>
+                        <td><code>imagenes.csv</code></td>
+                        <td>CSV</td>
+                        <td>Fotografías del alumnado convertidas a cadenas de texto Base64.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="instalacion">
+            <h2>3. Requisitos e Instalación</h2>
+            <h3>Requisitos del Sistema</h3>
+            <ul>
+                <li><strong>Java Runtime Environment:</strong> Versión 17 o superior.</li>
+                <li><strong>Librerías gráficas:</strong> Módulos de JavaFX (Graphics, Controls, FXML).</li>
+                <li><strong>Dependencias:</strong> Jackson Databind (para JSON) y JasperReports (para PDF).</li>
+            </ul>
+            <h3>Instalación</h3>
+            <p>Descomprima el archivo del proyecto en un directorio con permisos de escritura. Asegúrese de que los archivos base (<code>nombres.json</code>, etc.) se encuentren en la misma carpeta que el ejecutable para que la carga inicial sea correcta.</p>
+        </section>
+
+        <section id="interfaz">
+            <h2>4. Manual de la Interfaz Gráfica</h2>
+            <p>La interfaz ha sido diseñada siguiendo el patrón <strong>Material Design</strong> adaptado a un entorno mágico:</p>
+            <ul>
+                <li><strong>Panel de Control Superior:</strong> Contiene el buscador inteligente, el filtro por categorías y el selector de idioma.</li>
+                <li><strong>Área de Navegación Central:</strong> Una cuadrícula (TilePane) que muestra tarjetas dinámicas. Cada tarjeta cambia su color de borde según la casa del mago:
+                    <ul>
+                        <li><span class="color-gry">Rojo:</span> Gryffindor</li>
+                        <li><span class="color-sly">Verde:</span> Slytherin</li>
+                        <li><span class="color-rav">Azul:</span> Ravenclaw</li>
+                        <li><span class="color-huf">Amarillo:</span> Hufflepuff</li>
+                    </ul>
+                </li>
+                <li><strong>Paginador Inferior:</strong> Permite gestionar grandes volúmenes de datos dividiéndolos en bloques de 8 alumnos por página para mejorar el rendimiento.</li>
+            </ul>
+        </section>
+
+        <section id="operaciones">
+            <h2>5. Guía de Operaciones (CRUD)</h2>
+            <div class="action-box">
+                <h3>Añadir un nuevo registro</h3>
+                <ol>
+                    <li>Haga clic en el botón con el icono <strong>"+"</strong>.</li>
+                    <li>Introduzca el nombre del alumno. El botón "Guardar" se bloqueará si el nombre está vacío.</li>
+                    <li>Seleccione la casa y describa la varita.</li>
+                    <li><strong>Carga de imagen:</strong> Utilice el selector para buscar un archivo JPG o PNG. El sistema lo convertirá automáticamente a binario.</li>
+                    <li>Pulse <strong>Guardar</strong>: el sistema sincronizará los tres archivos de datos instantáneamente.</li>
+                </ol>
+            </div>
+            <div class="action-box">
+                <h3>Búsqueda y Filtrado</h3>
+                <p>El buscador no requiere pulsar "Enter". Simplemente escriba y la interfaz se actualizará. Puede elegir buscar específicamente por nombre, casa o el material de la varita usando el desplegable adyacente.</p>
+            </div>
+            <div class="action-box">
+                <h3>Eliminación (Expulsión)</h3>
+                <p>Para eliminar a un mago, entre en sus detalles y pulse <strong>Eliminar</strong>. Se mostrará una alerta de confirmación con la foto del mago para evitar borrados accidentales.</p>
+            </div>
+        </section>
+
+        <section id="reportes">
+            <h2>6. Motor de Reportes (JasperReports)</h2>
+            <p>La aplicación permite exportar datos en formato PDF profesional, ideal para impresiones oficiales:</p>
+            <ul>
+                <li><strong>Reporte General:</strong> Accesible desde el botón "PDF" de la pantalla principal. Incluye a todos los magos filtrados actualmente en una lista tabular.</li>
+                <li><strong>Ficha de Alumno:</strong> Accesible desde la vista de detalles. Genera un documento individual con la foto ampliada y los datos técnicos de la varita.</li>
+            </ul>
+            <p><em>Nota: El proceso de generación puede tardar unos segundos dependiendo del tamaño de las imágenes cargadas.</em></p>
+        </section>
+
+        <section id="resolucion">
+            <h2>7. Resolución de Problemas</h2>
+            <div class="note">
+                <strong>¿No se ven las imágenes?</strong><br>
+                Compruebe que el archivo <code>imagenes.csv</code> tiene el formato correcto (id, base64) y que no hay líneas corruptas.
+            </div>
+            <div class="note">
+                <strong>¿Error al guardar?</strong><br>
+                Asegúrese de que la aplicación tiene permisos para escribir en la carpeta actual y que ningún otro programa (como un editor de texto) tiene bloqueados los archivos .json o .xml.
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p><strong>Equipo de Desarrollo:</strong> Unai, Igor y Ruben</p>
+            <p>Documentación generada para el Proyecto de Acceso a Datos / Interfaces de Usuario 2024.</p>
+        </div>
+    </footer>
+</body>
+</html>
