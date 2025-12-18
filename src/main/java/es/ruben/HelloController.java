@@ -36,7 +36,7 @@ import java.util.*;
 
 /**
  * <h2>Controlador de la Vista Principal - HelloController</h2>
- * Versión Unificada: Layout 4x2 Centrado + Tooltips Dinámicos.
+ * Versión Unificada: Layout 4x2 Centrado + Tooltips + Mensaje "Sin Resultados".
  */
 public class HelloController {
 
@@ -401,6 +401,8 @@ public class HelloController {
                 case "tooltip_delete": return "Permanently expel this wizard";
                 case "tooltip_photo": return "Select an image file (JPG/PNG)";
                 case "tooltip_card": return "Click to view details";
+                // --- NUEVO CASO ---
+                case "msg_no_results": return "🔍 No matches found for these criteria.";
                 default: return key;
             }
         } else {
@@ -426,6 +428,8 @@ public class HelloController {
                 case "tooltip_delete": return "Expulsar permanentemente a este alumno";
                 case "tooltip_photo": return "Seleccionar archivo de imagen (JPG/PNG)";
                 case "tooltip_card": return "Haz click para ver detalles";
+                // --- NUEVO CASO ---
+                case "msg_no_results": return "🔍 No existen coincidencias con esos criterios.";
                 default: return key;
             }
         }
@@ -461,6 +465,19 @@ public class HelloController {
 
     // --- PAGINACIÓN Y CARDS (LAYOUT 4x2 CENTRADO) ---
     private Node createPage(int idx) {
+
+        // --- CAMBIO: DETECTAR SI NO HAY RESULTADOS ---
+        if (filteredData.isEmpty()) {
+            Label noResultsLabel = new Label(getText("msg_no_results"));
+            noResultsLabel.setStyle("-fx-font-size: 20px; -fx-text-fill: #95a5a6; -fx-font-weight: bold;");
+
+            VBox emptyBox = new VBox(noResultsLabel);
+            emptyBox.setAlignment(Pos.CENTER);
+            emptyBox.setPadding(new Insets(50));
+            return emptyBox;
+        }
+        // ----------------------------------------------
+
         TilePane tp = new TilePane(20, 20);
         tp.setPadding(new Insets(20));
         tp.setPrefColumns(4);
