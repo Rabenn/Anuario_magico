@@ -214,12 +214,15 @@ public class HelloController {
      */
     private void runImportProcess(Button sourceBtn) {
         logger.info("Iniciando proceso de importación Python...");
+
+        // Feedback visual inmediato en el botón
         if (sourceBtn != null) {
             sourceBtn.setDisable(true);
             sourceBtn.setText(currentLang.equals("ES") ? "Abriendo CMD..." : "Opening CMD...");
         }
         menuImportItem.setDisable(true);
 
+        // Lanzamos la tarea en un hilo secundario para no congelar la app
         Thread taskThread = new Thread(() -> {
             try {
                 File scriptFile = new File(IMPORT_SCRIPT_NAME);
@@ -228,22 +231,31 @@ public class HelloController {
                     throw new FileNotFoundException("Script no encontrado: " + IMPORT_SCRIPT_NAME);
                 }
 
+                // --- COMANDO MODIFICADO PARA AUTO-CIERRE ---
+                // "cmd /c start /wait" -> Abre ventana nueva y espera
+                // "cmd /c python..."   -> Ejecuta y CIERRA (/c) al terminar
                 ProcessBuilder pb = new ProcessBuilder(
-                        "cmd", "/c", "start", "/wait", "cmd", "/k", "python " + IMPORT_SCRIPT_NAME
+                        "cmd", "/c", "start", "/wait", "cmd", "/c", "python " + IMPORT_SCRIPT_NAME
                 );
 
                 Process process = pb.start();
+
+                // Java espera aquí hasta que la ventana negra se cierre
                 int exitCode = process.waitFor();
                 logger.info("Proceso CMD cerrado. Recargando datos...");
 
+                // Volvemos al hilo de JavaFX para actualizar la pantalla
                 Platform.runLater(() -> {
                     loadFromHeterogeneousFiles();
+
                     if (!wizardList.isEmpty()) {
+                        // Si ha ido bien, refrescamos la vista
                         rootPane.getChildren().clear();
                         setupPagination();
                         updateInterfaceLanguage();
                         showAlert(Alert.AlertType.INFORMATION, "Importación", getText("msg_import_success"));
                     } else {
+                        // Si sigue vacío (ej: el usuario cerró la ventana antes de tiempo)
                         if (sourceBtn != null) resetImportButton(sourceBtn);
                     }
                     menuImportItem.setDisable(false);
@@ -251,6 +263,7 @@ public class HelloController {
 
             } catch (Exception e) {
                 logger.error("Error lanzando proceso de importación", e);
+                // En caso de error técnico (no se encuentra python, etc)
                 Platform.runLater(() -> {
                     showAlert(Alert.AlertType.ERROR, "Error", "Error al abrir el script:\n" + e.getMessage());
                     if (sourceBtn != null) resetImportButton(sourceBtn);
