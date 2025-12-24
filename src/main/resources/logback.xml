@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration debug="true">
 
-    <!-- === Consola === -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <!-- === Archivo general === -->
     <appender name="FILE_ALL" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>target/logs.log</file>
         <append>true</append>
@@ -21,15 +19,14 @@
         </encoder>
     </appender>
 
-    <!-- === Logger del proyecto === -->
     <logger name="es.ruben" level="DEBUG" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE_ALL"/>
     </logger>
 
-    <!-- === Root (solo consola para otros paquetes) === -->
     <root level="WARN">
         <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE_ALL"/>
     </root>
 
 </configuration>

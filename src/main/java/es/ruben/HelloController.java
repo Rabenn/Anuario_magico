@@ -41,7 +41,22 @@ import java.util.*;
 
 /**
  * <h2>Controlador de la Vista Principal - HelloController</h2>
- * Versión Final: Ejecuta Python en CMD visible.
+ * Esta clase actúa como el "cerebro" de la interfaz gráfica, coordinando la interacción
+ * entre la vista (FXML), el modelo de datos (Wizard) y los servicios externos.
+ * <p>Responsabilidades principales:</p>
+ * <ul>
+ * <li><b>Orquestación de Datos:</b> Carga y fusiona información desde fuentes heterogéneas
+ * (JSON, XML, CSV) en una lista unificada de objetos.</li>
+ * <li><b>Ejecución de Procesos Externos:</b> Gestiona la llamada al script Python (ETL)
+ * mediante hilos secundarios y comandos del sistema.</li>
+ * <li><b>Gestión de la UI:</b> Controla la paginación, el filtrado dinámico, la internacionalización
+ * (cambio de idioma) y la navegación entre vistas (listado/detalle).</li>
+ * <li><b>Persistencia:</b> Guarda los cambios realizados por el usuario de vuelta a los archivos originales.</li>
+ * </ul>
+ * * @author Unai
+ * @author Igor
+ * @author Ruben
+ * @version 1.0
  */
 public class HelloController {
 
@@ -72,11 +87,18 @@ public class HelloController {
     private final ReportService reportService = new ReportService();
     private Wizard currentWizard = null;
 
-    // CAMBIO 1: Apuntamos al script de Python en lugar del EXE
+    // Script de Python para importación ETL
     private final String IMPORT_SCRIPT_NAME = "etl_files.py";
 
+    /**
+     * Método de inicialización del controlador.
+     * Se ejecuta automáticamente tras la carga del FXML. Configura los listeners
+     * de la interfaz, inicializa la carga de datos y establece el idioma por defecto.
+     */
     @FXML
     public void initialize() {
+        logger.info("=== CONTROLLER INICIALIZADO: Cargando datos... ===");
+
         loadFromHeterogeneousFiles();
         filteredData = new FilteredList<>(wizardList, p -> true);
 
@@ -90,6 +112,7 @@ public class HelloController {
 
         langCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
             currentLang = newVal.equals("English") ? "EN" : "ES";
+            logger.info("Idioma cambiado a: {}", currentLang);
             updateInterfaceLanguage();
             if (wizardList.isEmpty()) {
                 showEmptyState();
@@ -100,11 +123,18 @@ public class HelloController {
 
         updateFilterCombo();
         filterTypeCombo.getSelectionModel().selectFirst();
-        searchField.textProperty().addListener((obs, oldVal, newVal) -> updateFilter());
+
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
+            logger.debug("Filtrando lista con: {}", newVal);
+            updateFilter();
+        });
         filterTypeCombo.valueProperty().addListener((obs, oldVal, newVal) -> updateFilter());
 
         addBtn.setOnAction(e -> showAddWizardDialog());
-        pdfBtn.setOnAction(e -> reportService.printYearbook(new ArrayList<>(wizardList), rootPane.getScene().getWindow()));
+        pdfBtn.setOnAction(e -> {
+            logger.info("Botón PDF General presionado.");
+            reportService.printYearbook(new ArrayList<>(wizardList), rootPane.getScene().getWindow());
+        });
 
         if (wizardList.isEmpty()) {
             showEmptyState();
@@ -115,8 +145,13 @@ public class HelloController {
         }
     }
 
-    // --- LÓGICA MANUAL DE USUARIO (VISOR INTERNO) ---
+    /**
+     * Abre el visor de ayuda interno (Manual de Usuario).
+     * Carga un archivo HTML local en un componente {@link WebView} dentro de una nueva ventana.
+     * Maneja excepciones si los recursos visuales o el archivo de ayuda no se encuentran.
+     */
     private void openUserManual() {
+        logger.info("Abriendo manual de usuario...");
         try {
             Stage helpStage = new Stage();
             helpStage.setTitle(getText("menu_manual"));
@@ -133,10 +168,12 @@ public class HelloController {
             WebView webView = new WebView();
             WebEngine webEngine = webView.getEngine();
 
+            // CORRECCIÓN: Usar '/' en lugar de '.' para asegurar compatibilidad en el JAR
             String resourcePath = "/es/ruben/MANUAL DE USUARIO/Manual de Usuario RETO3/index.html";
             URL url = getClass().getResource(resourcePath);
 
             if (url == null) {
+                logger.error("Archivo manual no encontrado en: {}", resourcePath);
                 showAlert(Alert.AlertType.ERROR, "Error", "No se encuentra el archivo del manual:\n" + resourcePath);
                 return;
             }
@@ -165,8 +202,18 @@ public class HelloController {
         alert.showAndWait();
     }
 
-    // --- LÓGICA IMPORTACIÓN (CAMBIO PRINCIPAL) ---
+    /**
+     * Ejecuta el proceso ETL (Extract, Transform, Load) externo mediante un script de Python.
+     * <p>Detalles técnicos:</p>
+     * <ul>
+     * <li>Utiliza {@link ProcessBuilder} para invocar la consola de comandos (CMD).</li>
+     * <li>Ejecuta el proceso en un hilo separado para no congelar la interfaz gráfica.</li>
+     * <li>Al finalizar, utiliza {@link Platform#runLater(Runnable)} para actualizar la UI desde el hilo de JavaFX.</li>
+     * </ul>
+     * * @param sourceBtn El botón que originó la acción (para deshabilitarlo durante el proceso).
+     */
     private void runImportProcess(Button sourceBtn) {
+        logger.info("Iniciando proceso de importación Python...");
         if (sourceBtn != null) {
             sourceBtn.setDisable(true);
             sourceBtn.setText(currentLang.equals("ES") ? "Abriendo CMD..." : "Opening CMD...");
@@ -176,31 +223,27 @@ public class HelloController {
         Thread taskThread = new Thread(() -> {
             try {
                 File scriptFile = new File(IMPORT_SCRIPT_NAME);
-                if (!scriptFile.exists()) throw new FileNotFoundException("Script no encontrado: " + IMPORT_SCRIPT_NAME);
+                if (!scriptFile.exists()) {
+                    logger.error("Script Python no encontrado en raíz: {}", IMPORT_SCRIPT_NAME);
+                    throw new FileNotFoundException("Script no encontrado: " + IMPORT_SCRIPT_NAME);
+                }
 
-                // --- COMANDO PARA ABRIR CMD VISIBLE ---
-                // "cmd /c start /wait" -> Abre una ventana nueva y ESPERA a que la cierres
-                // "cmd /k python..." -> Ejecuta python y MANTIENE la ventana abierta (para ver errores)
                 ProcessBuilder pb = new ProcessBuilder(
                         "cmd", "/c", "start", "/wait", "cmd", "/k", "python " + IMPORT_SCRIPT_NAME
                 );
 
                 Process process = pb.start();
-
-                // Java se quedará congelado en esta línea hasta que TÚ cierres la ventana negra del CMD
                 int exitCode = process.waitFor();
+                logger.info("Proceso CMD cerrado. Recargando datos...");
 
                 Platform.runLater(() -> {
-                    // Al cerrar la ventana, asumimos que el usuario ya terminó
                     loadFromHeterogeneousFiles();
-
                     if (!wizardList.isEmpty()) {
                         rootPane.getChildren().clear();
                         setupPagination();
                         updateInterfaceLanguage();
                         showAlert(Alert.AlertType.INFORMATION, "Importación", getText("msg_import_success"));
                     } else {
-                        // Si cerro la ventana y sigue vacío, quizás dio error el python
                         if (sourceBtn != null) resetImportButton(sourceBtn);
                     }
                     menuImportItem.setDisable(false);
@@ -412,7 +455,6 @@ public class HelloController {
         updatePagination();
     }
 
-    // --- LÓGICA DE CARGA Y RENDERIZADO (Sin cambios) ---
     private Node createPage(int idx) {
         if (filteredData.isEmpty()) {
             Label noResultsLabel = new Label(getText("msg_no_results"));
@@ -470,7 +512,17 @@ public class HelloController {
         return c;
     }
 
+    /**
+     * Carga y unifica los datos desde múltiples archivos con formatos distintos.
+     * <p>Estrategia de carga:</p>
+     * <ul>
+     * <li><b>JSON:</b> Carga la base de nombres y casas (fuente principal).</li>
+     * <li><b>XML:</b> Enriquece los objetos existentes añadiendo las varitas.</li>
+     * <li><b>CSV:</b> Decodifica las imágenes en Base64 y las asocia a cada mago.</li>
+     * </ul>
+     */
     private void loadFromHeterogeneousFiles() {
+        logger.debug("Iniciando carga de archivos heterogéneos...");
         Map<String, Wizard> tempMap = new HashMap<>();
         try {
             File jsonFile = new File("nombres.json");
@@ -486,6 +538,9 @@ public class HelloController {
                         tempMap.put(w.getId(), w);
                     }
                 }
+                logger.info("Cargados {} nombres desde JSON.", tempMap.size());
+            } else {
+                logger.warn("Archivo nombres.json no existe.");
             }
 
             File xmlFile = new File("varitas.xml");
@@ -500,6 +555,7 @@ public class HelloController {
                     Wizard w = tempMap.get(el.getAttribute("id"));
                     if (w != null) w.setWand(el.getElementsByTagName("Wand").item(0).getTextContent());
                 }
+                logger.debug("Datos de varitas XML procesados.");
             }
 
             File csvFile = new File("imagenes.csv");
@@ -507,6 +563,7 @@ public class HelloController {
                 try (BufferedReader br = new BufferedReader(new FileReader(csvFile))) {
                     String line;
                     boolean header = true;
+                    int imgCount = 0;
                     while ((line = br.readLine()) != null) {
                         if (header) { header = false; continue; }
                         String[] parts = line.split(",", 2);
@@ -515,24 +572,33 @@ public class HelloController {
                             if (w != null && !parts[1].trim().isEmpty()) {
                                 try {
                                     w.setImageBytes(Base64.getDecoder().decode(parts[1].trim()));
+                                    imgCount++;
                                 } catch (Exception e) {
                                     logger.warn("Error decodificando Base64 para el ID: {}", parts[0]);
                                 }
                             }
                         }
                     }
+                    logger.debug("Imágenes cargadas: {}", imgCount);
                 }
             }
             wizardList.clear();
             List<Wizard> sortedList = new ArrayList<>(tempMap.values());
             sortedList.sort(Comparator.comparing(Wizard::getName));
             wizardList.addAll(sortedList);
+            logger.info("Carga completa: {} magos en memoria.", wizardList.size());
         } catch (Exception e) {
             logger.error("Error en carga heterogénea: ", e);
         }
     }
 
+    /**
+     * Persiste el estado actual de la lista de magos en los archivos físicos.
+     * Descompone los objetos {@link Wizard} y distribuye sus atributos en
+     * los archivos correspondientes (JSON, XML, CSV).
+     */
     private void saveChangesToFiles() {
+        logger.info("Persistiendo cambios a disco...");
         try {
             ObjectMapper mapper = new ObjectMapper();
             mapper.enable(SerializationFeature.INDENT_OUTPUT);
@@ -563,11 +629,17 @@ public class HelloController {
                     pw.println(w.getId() + "," + (b64 != null ? b64 : ""));
                 }
             }
+            logger.info("Datos guardados correctamente.");
         } catch (Exception e) {
             logger.error("Error al persistir cambios: ", e);
         }
     }
 
+    /**
+     * Muestra un diálogo modal personalizado para añadir un nuevo mago.
+     * Gestiona la validación de campos, la selección de imágenes desde el disco
+     * y la creación del nuevo objeto en memoria y en disco.
+     */
     private void showAddWizardDialog() {
         Dialog<Wizard> dialog = new Dialog<>();
         dialog.setTitle(currentLang.equals("ES") ? "Añadir Nuevo Mago" : "Add New Wizard");
@@ -632,7 +704,16 @@ public class HelloController {
                         imageObj = new Image(new FileInputStream(selectedFile[0]));
                     } catch (IOException ex) {}
                 }
-                String newId = UUID.randomUUID().toString();
+
+                // BLINDAJE ANTI-DUPLICADOS (do-while)
+                String newId;
+                boolean existe;
+                do {
+                    newId = UUID.randomUUID().toString();
+                    String idCandidato = newId;
+                    existe = wizardList.stream().anyMatch(w -> w.getId().equals(idCandidato));
+                } while (existe);
+
                 return new Wizard(newId, nameField.getText(), houseCombo.getValue(), wandField.getText(), imageObj, imageBytes);
             }
             return null;
@@ -640,6 +721,7 @@ public class HelloController {
 
         Optional<Wizard> result = dialog.showAndWait();
         result.ifPresent(wizard -> {
+            logger.info("Nuevo mago añadido: {}", wizard.getName());
             boolean wasEmpty = wizardList.isEmpty();
             wizardList.add(0, wizard);
             saveChangesToFiles();
@@ -677,6 +759,7 @@ public class HelloController {
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == btnEliminar) {
+            logger.info("Mago ELIMINADO: {}", w.getName());
             wizardList.remove(w);
             saveChangesToFiles();
             currentWizard = null;
@@ -693,6 +776,7 @@ public class HelloController {
     }
 
     private void showDetails(Wizard w) {
+        logger.debug("Viendo detalles de: {}", w.getName());
         currentWizard = w;
         VBox details = new VBox(20); details.setAlignment(Pos.CENTER);
         ImageView iv = new ImageView();
@@ -714,7 +798,10 @@ public class HelloController {
         Button pdfProfileBtn = new Button("PDF");
         pdfProfileBtn.setStyle("-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-weight: bold;");
         pdfProfileBtn.setTooltip(createTooltip(getText("tooltip_pdf_profile")));
-        pdfProfileBtn.setOnAction(e -> reportService.printWizardProfile(w, rootPane.getScene().getWindow()));
+        pdfProfileBtn.setOnAction(e -> {
+            logger.info("Botón PDF Perfil presionado para {}", w.getName());
+            reportService.printWizardProfile(w, rootPane.getScene().getWindow());
+        });
 
         Button deleteBtn = new Button(getText("btn_delete"));
         deleteBtn.getStyleClass().add("button-delete");

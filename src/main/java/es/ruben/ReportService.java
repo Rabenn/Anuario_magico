@@ -4,8 +4,12 @@ import net.sf.jasperreports.engine.*;
 import net.sf.jasperreports.engine.data.JRMapCollectionDataSource;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.*;
 
@@ -28,6 +32,9 @@ import java.util.*;
  */
 public class ReportService {
 
+    // Logger para registrar actividad y errores en logs.log
+    private static final Logger logger = LoggerFactory.getLogger(ReportService.class);
+
     /**
      * Genera un archivo PDF con el listado completo de magos.
      * Compila la plantilla del anuario, vincula la lista de datos y solicita
@@ -36,21 +43,40 @@ public class ReportService {
      * @param owner Ventana propietaria para centrar el diálogo de guardado.
      */
     public void printYearbook(List<Wizard> wizards, Window owner) {
+        logger.info("Solicitud de impresión de ANUARIO COMPLETO iniciada. Magos: {}", wizards.size());
         try {
             File destFile = showSaveDialog(owner, "Hogwarts_Yearbook.pdf");
-            if (destFile == null) return;
+            if (destFile == null) {
+                logger.info("Exportación cancelada por el usuario.");
+                return;
+            }
 
-            InputStream reportStream = getClass().getResourceAsStream("reports/yearbook_list.jrxml");
+            // CORRECCIÓN IMPORTANTE: Ruta absoluta para evitar error en el JAR
+            // Se usa "/es.ruben/" porque es la carpeta física que vimos en tu captura
+            String reportPath = "/es/ruben/reports/yearbook_list.jrxml";
+            InputStream reportStream = getClass().getResourceAsStream(reportPath);
+
+            // Bloque de seguridad: Si no encuentra el archivo, avisa en el log y lanza error
+            if (reportStream == null) {
+                logger.error("PLANTILLA NO ENCONTRADA en la ruta: {}", reportPath);
+                throw new FileNotFoundException("No se encuentra la plantilla .jrxml. Verifica la ruta: " + reportPath);
+            }
 
             List<Map<String, ?>> dataList = convertWizardsToMap(wizards);
 
+            logger.debug("Compilando reporte Jasper...");
             JasperReport jasperReport = JasperCompileManager.compileReport(reportStream);
             JRMapCollectionDataSource dataSource = new JRMapCollectionDataSource(dataList);
             JasperPrint print = JasperFillManager.fillReport(jasperReport, null, dataSource);
+
             JasperExportManager.exportReportToPdfFile(print, destFile.getAbsolutePath());
 
+            logger.info("PDF generado exitosamente en: {}", destFile.getAbsolutePath());
+
         } catch (Exception e) {
-            e.printStackTrace();
+            // El error se guarda en el log y se muestra al usuario
+            logger.error("ERROR CRÍTICO generando el anuario PDF", e);
+            showErrorAlert("Error al generar el PDF del anuario", e.getMessage());
         }
     }
 
@@ -62,21 +88,36 @@ public class ReportService {
      * @param owner Ventana propietaria para el diálogo de archivos.
      */
     public void printWizardProfile(Wizard wizard, Window owner) {
+        logger.info("Solicitud de impresión de PERFIL INDIVIDUAL para: {}", wizard.getName());
         try {
             File destFile = showSaveDialog(owner, "Wizard_Profile.pdf");
-            if (destFile == null) return;
+            if (destFile == null) {
+                logger.info("Exportación cancelada por el usuario.");
+                return;
+            }
 
-            InputStream reportStream = getClass().getResourceAsStream("reports/wizard_profile.jrxml");
+            // CORRECCIÓN IMPORTANTE: Ruta absoluta
+            String reportPath = "/es/ruben/reports/wizard_profile.jrxml";
+            InputStream reportStream = getClass().getResourceAsStream(reportPath);
+
+            if (reportStream == null) {
+                logger.error("PLANTILLA NO ENCONTRADA en la ruta: {}", reportPath);
+                throw new FileNotFoundException("No se encuentra la plantilla .jrxml del perfil. Verifica la ruta: " + reportPath);
+            }
 
             List<Map<String, ?>> dataList = convertWizardsToMap(Collections.singletonList(wizard));
 
             JasperReport jasperReport = JasperCompileManager.compileReport(reportStream);
             JRMapCollectionDataSource dataSource = new JRMapCollectionDataSource(dataList);
             JasperPrint print = JasperFillManager.fillReport(jasperReport, null, dataSource);
+
             JasperExportManager.exportReportToPdfFile(print, destFile.getAbsolutePath());
 
+            logger.info("Perfil PDF generado exitosamente para {}", wizard.getName());
+
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("ERROR CRÍTICO generando perfil de " + wizard.getName(), e);
+            showErrorAlert("Error al generar el perfil", e.getMessage());
         }
     }
 
@@ -118,5 +159,17 @@ public class ReportService {
         fileChooser.setInitialFileName(defaultName);
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
         return fileChooser.showSaveDialog(owner);
+    }
+
+    /**
+     * Método privado para mostrar alertas visuales cuando falla el reporte.
+     * Esto evita que el programa se quede "mudo" si hay un error.
+     */
+    private void showErrorAlert(String title, String content) {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+        alert.setTitle("Error");
+        alert.setHeaderText(title);
+        alert.setContentText(content);
+        alert.showAndWait();
     }
 }

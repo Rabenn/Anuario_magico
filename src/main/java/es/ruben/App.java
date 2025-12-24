@@ -5,6 +5,9 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.net.URL;
 
@@ -19,6 +22,8 @@ import java.net.URL;
  * @version 1.0
  */
 public class App extends Application {
+
+    private static final Logger logger = LoggerFactory.getLogger(App.class);
 
     /**
      * Método de inicio de la aplicación JavaFX.
@@ -35,15 +40,27 @@ public class App extends Application {
      */
     @Override
     public void start(Stage stage) throws IOException {
+        logger.info(">>> INICIANDO APLICACIÓN JAVA FX <<<");
+
         URL fxmlUrl = App.class.getResource("xml/main-view.fxml");
+        if (fxmlUrl == null) {
+            logger.error("CRÍTICO: No se encuentra el archivo xml/main-view.fxml");
+        }
+
         FXMLLoader fxmlLoader = new FXMLLoader(fxmlUrl);
         Scene scene = new Scene(fxmlLoader.load(), 1000, 700);
 
         stage.setTitle("ANUARIO MÁGICO");
-        stage.getIcons().add(new Image(App.class.getResourceAsStream("images/icono.png")));
+
+        try {
+            stage.getIcons().add(new Image(App.class.getResourceAsStream("images/icono.png")));
+        } catch (Exception e) {
+            logger.warn("No se pudo cargar el icono de la aplicación (images/icono.png)");
+        }
 
         stage.setScene(scene);
         stage.show();
+        logger.info("Ventana principal mostrada correctamente.");
     }
 
     /**
