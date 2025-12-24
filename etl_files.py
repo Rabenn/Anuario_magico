@@ -63,7 +63,7 @@ def load_existing_ids():
 
 def run_etl():
     # --- FASE 1: OBTENCIÓN DE DATOS (API) ---
-    print("🚀 FASE 1: Metadatos API...")
+    print(" FASE 1: Metadatos API...")
     chars = []
     page = 1
 
@@ -92,7 +92,7 @@ def run_etl():
                 page += 1
             except: break
 
-    print(f"\n✅ {len(chars)} magos encontrados. Guardando JSON/XML...")
+    print(f"\n {len(chars)} magos encontrados. Guardando JSON/XML...")
 
     # Guardado rápido de JSON
     with open(FILE_JSON, "w", encoding="utf-8") as f:
@@ -110,7 +110,7 @@ def run_etl():
         f.write('\n</WizardsWands>')
 
     # --- FASE 2: DESCARGA DE IMÁGENES (PARALELO) ---
-    print("\n⚡ FASE 2: Imágenes a CSV (Modo Turbo)...")
+    print("\n FASE 2: Imágenes a CSV (Modo Turbo)...")
     done_ids = load_existing_ids()
 
     # Filtramos los que ya tenemos para no procesarlos
@@ -148,7 +148,7 @@ def run_etl():
                         writer.writerow(result)
                         # No hacemos f.flush() cada vez, dejamos que Python maneje el buffer
 
-    print(f"\n✨ ¡Terminado! Procesados {total} nuevos registros.")
+    print(f"\n ¡Terminado! Procesados {total} nuevos registros.")
 
 if __name__ == "__main__":
     run_etl()
