@@ -1,174 +1,109 @@
-/* 🏰 ESTILOS BASE DE HOGWARTS (PERGAMINO CLÁSICO) */
+/* 🏰 ANUARIO MÁGICO - ESTILO HOGWARTS FINAL UNIFICADO */
+
 .root {
-   /* Color de fondo que simula pergamino o piedra clara */
-   -fx-background-color: #f8f5e6;
-   /* Fuente clásica y antigua */
-   -fx-font-family: 'Georgia', 'Times New Roman', serif;
+    -fx-background-color: #fcfaf5;
+    -fx-font-family: 'Times New Roman', serif;
 }
 
-
-/* Color de texto principal (tinta) */
-.label {
-   -fx-text-fill: #2f2f2f;
+/* --- TEXTOS (GRANATE OSCURO) --- */
+.label, .text, .combo-box .list-cell, .text-field {
+    -fx-text-fill: #4a0404;
 }
 
-
-/* Unificar fondos de contenedores para evitar bloques blancos */
-.stack-pane, .scroll-pane, .scroll-pane > .viewport {
-   -fx-background-color: #f8f5e6;
+.card-title {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #4a0404;
 }
 
-
-/* --- ESTILOS DE TARJETAS (CARTAS DE MAGOS) --- */
+/* --- TARJETAS --- */
 .card {
-   -fx-background-color: #f8f5e6;
-   -fx-background-radius: 8;
-   -fx-border-radius: 8;
-   -fx-border-width: 2px;
-   /* Efecto de sombra sutil base */
-   -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 6, 0, 0, 3);
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-border-width: 1.2px;
+    -fx-border-color: #d4af37;
+    -fx-effect: dropshadow(three-pass-box, rgba(74,4,4,0.08), 8, 0, 0, 3);
 }
-
 
 .card:hover {
-   -fx-cursor: hand;
-   /* Efecto de acercamiento */
-   -fx-scale-x: 1.02;
-   -fx-scale-y: 1.02;
-   -fx-background-color: #f8f5e6;
-   -fx-translate-x: 5; /* Desplazamiento lateral al seleccionar */
+    -fx-cursor: hand;
+    -fx-scale-x: 1.04;
+    -fx-scale-y: 1.04;
 }
 
+/* --- HOVERS DE CASAS (GLOW SUAVE) --- */
+.card-gryffindor:hover { -fx-effect: dropshadow(three-pass-box, #740001, 15, 0.3, 0, 0); }
+.card-slytherin:hover { -fx-effect: dropshadow(three-pass-box, #1a472a, 15, 0.3, 0, 0); }
+.card-ravenclaw:hover { -fx-effect: dropshadow(three-pass-box, #0e1a40, 15, 0.3, 0, 0); }
+.card-hufflepuff:hover { -fx-effect: dropshadow(three-pass-box, #d4af37, 15, 0.3, 0, 0); }
 
-/* --- RECUADROS Y FONDOS DE CASA CON ILUMINACIÓN DINÁMICA --- */
+/* --- BOTONES CON RECUADRO DORADO Y HOVER UNIFICADO --- */
 
-
-/* Gryffindor: Rojo Pulso */
-
-
-.card-gryffindor { -fx-border-color: #ff0000; }
-
-
-.card-gryffindor:hover { -fx-effect: dropshadow(three-pass-box, #ff0000, 15, 0.5, 0, 0); }
-
-
-
-
-
-
-/* Slytherin: Verde Matriz */
-
-
-.card-slytherin { -fx-border-color: #00ff41; }
-
-
-.card-slytherin:hover { -fx-effect: dropshadow(three-pass-box, #00ff41, 15, 0.5, 0, 0); }
-
-
-
-
-
-
-/* Ravenclaw: Azul Cibernético */
-
-
-.card-ravenclaw { -fx-border-color: #00d9ff; }
-
-
-.card-ravenclaw:hover { -fx-effect: dropshadow(three-pass-box, #00d9ff, 15, 0.5, 0, 0); }
-
-
-
-
-
-
-/* Hufflepuff: Oro Eléctrico */
-
-
-.card-hufflepuff { -fx-border-color: #ffcc00; }
-
-
-.card-hufflepuff:hover { -fx-effect: dropshadow(three-pass-box, #ffcc00, 15, 0.5, 0, 0); }
-
-
-
-
-
-
-.card-default { -fx-border-color: #333333; }
-
-
-/* --- ESTILOS DE TEXTO EN CARTAS --- */
-.card-title {
-   -fx-font-weight: bold;
-   -fx-font-size: 15px;
-   -fx-font-family: 'Garamond', serif;
-   -fx-text-fill: #1a1a1a;
+.button {
+    -fx-font-family: 'Times New Roman', serif;
+    -fx-font-weight: bold;
+    -fx-border-width: 1.5px;
+    -fx-border-color: #d4af37; /* Recuadro Dorado */
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-cursor: hand;
+    -fx-padding: 8 15 8 15;
+    -fx-content-display: TEXT_ONLY;
 }
 
-
-.card-subtitle {
-   -fx-font-size: 13px;
-   -fx-font-style: italic;
-   -fx-text-fill: #555555;
+/* Efecto Hover para TODOS los botones: Brillo de borde y ligero aclarado */
+.button:hover {
+    -fx-border-color: #fcfaf5; /* El borde brilla en blanco hueso */
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
 }
 
+/* 1. Botón AÑADIR (Verde Bosque muy oscuro) */
+.button-add {
+    -fx-background-color: #0d2616;
+    -fx-text-fill: #fcfaf5;
+}
+.button-add:hover {
+    -fx-background-color: #1a472a;
+}
 
-/* --- ESTILOS DE BOTONES (CLÁSICOS HOGWARTS) --- */
+/* 2. Botón EXPULSAR / ELIMINAR (Rojo Ladrillo) */
+.button-delete, .button-expel {
+    -fx-background-color: #96281b;
+    -fx-text-fill: #fcfaf5;
+}
+.button-delete:hover, .button-expel:hover {
+    -fx-background-color: #c0392b;
+}
+
+/* 3. Botón PDF (Azul Pizarra - Igual que el del detalle) */
+.button-pdf {
+    -fx-background-color: #34495e;
+    -fx-text-fill: white;
+}
+.button-pdf:hover {
+    -fx-background-color: #46637f;
+}
+
+/* 4. Botón VOLVER / LISTADO (Granate Original) */
 .button-back {
-   -fx-background-color: #740001; /* Rojo Gryffindor */
-   -fx-text-fill: #eeba30;       /* Dorado */
-   -fx-font-weight: bold;
-   -fx-font-size: 14px;
-   -fx-background-radius: 5;
-   -fx-cursor: hand;
-   -fx-border-color: #eeba30;
+    -fx-background-color: #4a0404;
+    -fx-text-fill: #fcfaf5;
 }
 .button-back:hover {
-   -fx-background-color: #5d0000;
+    -fx-background-color: #630606;
 }
 
-
-.button-delete {
-   -fx-background-color: #c0392b;
-   -fx-text-fill: white;
-   -fx-font-weight: bold;
-   -fx-font-size: 14px;
-   -fx-background-radius: 5;
-   -fx-cursor: hand;
-   -fx-border-color: #96281b;
-}
-.button-delete:hover {
-   -fx-background-color: #e74c3c;
-}
-
-
-/* --- ENTRADAS Y COMBOBOX --- */
+/* --- OTROS ELEMENTOS --- */
 .text-field, .combo-box {
-   -fx-background-radius: 4;
-   -fx-border-color: #b0a394;
-   -fx-background-color: #fffdf5;
-}
-.text-field:focused, .combo-box:focused {
-   -fx-border-color: #740001;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d4af37;
 }
 
-
-/* --- VENTANAS DE DIÁLOGO --- */
-.dialog-pane {
-   -fx-background-color: #f8f5e6;
-   -fx-border-color: #740001;
-   -fx-border-width: 2px;
-}
-.dialog-pane .label {
-   -fx-font-weight: bold;
-   -fx-text-fill: #2f2f2f;
-}
-.dialog-pane .button {
-   -fx-background-color: #740001;
-   -fx-text-fill: #eeba30;
-   -fx-cursor: hand;
-}
-.dialog-pane .button:hover {
-   -fx-background-color: #5d0000;
+.pagination .pagination-control .button {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #4a0404;
+    -fx-text-fill: #4a0404;
+    -fx-border-width: 1px;
 }
