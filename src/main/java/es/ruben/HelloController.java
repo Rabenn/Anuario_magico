@@ -130,6 +130,9 @@ public class HelloController {
         });
         filterTypeCombo.valueProperty().addListener((obs, oldVal, newVal) -> updateFilter());
 
+        addBtn.getStyleClass().add("button-add");
+        pdfBtn.getStyleClass().add("button-pdf");
+
         addBtn.setOnAction(e -> showAddWizardDialog());
         pdfBtn.setOnAction(e -> {
             logger.info("Botón PDF General presionado.");
@@ -807,9 +810,8 @@ public class HelloController {
             rootPane.getChildren().clear();
             rootPane.getChildren().add(pagination);
         });
-
         Button pdfProfileBtn = new Button("PDF");
-        pdfProfileBtn.setStyle("-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-weight: bold;");
+        pdfProfileBtn.getStyleClass().add("button-pdf");
         pdfProfileBtn.setTooltip(createTooltip(getText("tooltip_pdf_profile")));
         pdfProfileBtn.setOnAction(e -> {
             logger.info("Botón PDF Perfil presionado para {}", w.getName());
