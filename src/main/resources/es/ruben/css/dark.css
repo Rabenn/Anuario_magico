@@ -1,0 +1,164 @@
+/* 🏰 ANUARIO MÁGICO - MODO OSCURO HOGWARTS */
+
+/* --- FONDO GENERAL --- */
+.root, .border-pane {
+    -fx-background-color: #121212; /* Piedra del castillo */
+    -fx-font-family: 'Times New Roman', serif;
+}
+
+/* --- MENU BAR --- */
+.menu-bar {
+    -fx-background-color: #2c2c2c;
+    -fx-text-fill: #f1d97a;
+}
+
+.menu, .menu-item {
+    -fx-background-color: #2c2c2c;
+    -fx-text-fill: #f1d97a;
+}
+
+/* --- TEXTOS (DORADO SUAVE) --- */
+.label, .text, .combo-box .list-cell, .text-field {
+    -fx-text-fill: #d4af37; /* Dorado Hogwarts */
+}
+
+.card-title {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f1d97a;
+}
+
+/* --- TARJETAS (PIZARRA OSCURA) --- */
+.card {
+    -fx-background-color: #1e1e1e;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-border-width: 1.2px;
+    -fx-border-color: #8c6d1f;
+    -fx-effect: dropshadow(three-pass-box, rgba(212,175,55,0.15), 10, 0, 0, 4);
+}
+
+.card:hover {
+    -fx-cursor: hand;
+    -fx-scale-x: 1.04;
+    -fx-scale-y: 1.04;
+}
+
+/* --- HOVERS DE CASAS (BRILLO MÁGICO) --- */
+.card-gryffindor:hover { -fx-effect: dropshadow(three-pass-box, #b30000, 18, 0.4, 0, 0); }
+.card-slytherin:hover { -fx-effect: dropshadow(three-pass-box, #1f7a4d, 18, 0.4, 0, 0); }
+.card-ravenclaw:hover { -fx-effect: dropshadow(three-pass-box, #2c3e75, 18, 0.4, 0, 0); }
+.card-hufflepuff:hover { -fx-effect: dropshadow(three-pass-box, #f1c40f, 18, 0.4, 0, 0); }
+
+/* --- BOTONES (MÁGICOS Y SOFISTICADOS) --- */
+.button {
+    -fx-font-family: 'Times New Roman', serif;
+    -fx-font-weight: bold;
+    -fx-border-width: 1.5px;
+    -fx-border-color: #8c6d1f;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-cursor: hand;
+    -fx-padding: 8 15 8 15;
+    -fx-content-display: LEFT;
+}
+
+/* Hover general */
+.button:hover {
+    -fx-border-color: #f1d97a;
+}
+
+/* Botón AÑADIR (Verde Bosque Oscuro) */
+.button.button-add {
+    -fx-background-color: #0b3d2e !important;
+    -fx-text-fill: #f1d97a;
+}
+
+/* Botón ELIMINAR / EXPULSAR */
+.button-delete, .button-expel {
+    -fx-background-color: #5c1a1a;
+    -fx-text-fill: #f1d97a;
+}
+
+/* Botón PDF (Azul Nocturno) */
+.button.button-pdf {
+    -fx-background-color: #1c2833 !important;
+    -fx-text-fill: #f1d97a;
+}
+
+/* Botón VOLVER */
+.button-back {
+    -fx-background-color: #3a0d0d;
+    -fx-text-fill: #f1d97a;
+}
+
+/* --- CAMPOS DE TEXTO Y COMBOS --- */
+.text-field, .combo-box {
+    -fx-background-color: #1e1e1e;
+    -fx-border-color: #8c6d1f;
+    -fx-text-fill: #f1d97a;
+}
+
+/* Listas desplegables */
+.combo-box .list-cell {
+    -fx-background-color: #1e1e1e;
+    -fx-text-fill: #f1d97a;
+}
+
+/* --- PAGINACIÓN --- */
+.pagination .pagination-control .button {
+    -fx-background-color: #1e1e1e;
+    -fx-border-color: #8c6d1f;
+    -fx-text-fill: #f1d97a;
+}
+
+/* --- SCROLLBARS --- */
+.scroll-bar {
+    -fx-background-color: #2c2c2c;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #444;
+}
+
+/* --- TAMAÑOS DE FUENTE --- */
+.font-small  { -fx-font-size: 11px; }
+.font-medium { -fx-font-size: 14px; }
+.font-large  { -fx-font-size: 18px; }
+
+.scroll-pane {
+    -fx-background: #121212; /* fondo principal oscuro */
+    -fx-background-color: #121212; /* redundante para asegurar compatibilidad */
+}
+
+.scroll-pane .viewport {
+    -fx-background-color: #121212; /* fondo visible dentro del ScrollPane */
+}
+
+.pagination,
+.pagination .control-box,
+.pagination .page-information,
+.pagination .page-information .label {
+    -fx-background-color: #121212;
+    -fx-text-fill: #d4af37; /* dorado Hogwarts */
+}
+
+.pagination .arrow-button {
+    -fx-background-color: #1e1e1e;
+    -fx-text-fill: #f1d97a;
+}
+
+.scroll-bar {
+    -fx-background-color: #2c2c2c;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #444444;
+}
+
+.scroll-bar .increment-button, .scroll-bar .decrement-button {
+    -fx-background-color: #3c3c3c;
+}
+
+
+
