@@ -83,6 +83,34 @@
     -fx-text-fill: #fcfaf5;
 }
 
+.menu, .menu-item {
+    -fx-background-color: transparent; /* fondo normal */
+    -fx-background-insets: 0;
+    -fx-focus-color: transparent;      /* elimina el foco azul */
+    -fx-faint-focus-color: transparent; /* elimina el halo */
+}
+
+
+/* Fondo de la lista desplegable y celdas */
+/* --- COMBOBOX (idioma, casas, varita, etc.) --- */
+.combo-box,
+.combo-box .list-view,
+.combo-box .list-cell {
+    -fx-background-color: #2c2c2c;    /* fondo uniforme */
+    -fx-text-fill: #f1d97a;           /* texto dorado */
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+    -fx-background-insets: 0;
+}
+
+/* Selección de un item: no cambia al pasar mouse */
+.combo-box .list-cell:selected,
+.combo-box .list-cell:selected:hover,
+.combo-box .list-cell:hover {
+    -fx-background-color: #2c2c2c;
+    -fx-text-fill: #f1d97a;
+}
+
 
 /* --- OTROS ELEMENTOS --- */
 .text-field, .combo-box {

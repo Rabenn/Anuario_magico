@@ -71,7 +71,7 @@
 /* Botón AÑADIR (Verde Bosque Oscuro) */
 .button.button-add {
     -fx-background-color: #0b3d2e !important;
-    -fx-text-fill: #f1d97a;
+    -fx-text-fill: #f1d97a !important;
 }
 
 /* Botón ELIMINAR / EXPULSAR */
@@ -83,7 +83,7 @@
 /* Botón PDF (Azul Nocturno) */
 .button.button-pdf {
     -fx-background-color: #1c2833 !important;
-    -fx-text-fill: #f1d97a;
+    -fx-text-fill: #f1d97a !important;
 }
 
 /* Botón VOLVER */
