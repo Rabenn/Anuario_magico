@@ -50,6 +50,8 @@ public class App extends Application {
         FXMLLoader fxmlLoader = new FXMLLoader(fxmlUrl);
         Scene scene = new Scene(fxmlLoader.load(), 1000, 700);
 
+        scene.setFill(javafx.scene.paint.Color.web("#121212")); // mismo color que tu dark mode
+
         stage.setTitle("ANUARIO MÁGICO");
 
         try {
