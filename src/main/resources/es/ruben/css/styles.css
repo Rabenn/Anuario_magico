@@ -49,23 +49,18 @@
     -fx-border-radius: 4;
     -fx-cursor: hand;
     -fx-padding: 8 15 8 15;
-    -fx-content-display: TEXT_ONLY;
+    -fx-content-display: LEFT;
 }
 
 /* Efecto Hover para TODOS los botones: Brillo de borde y ligero aclarado */
 .button:hover {
     -fx-border-color: #fcfaf5; /* El borde brilla en blanco hueso */
-    -fx-scale-x: 1.02;
-    -fx-scale-y: 1.02;
 }
 
 /* 1. Botón AÑADIR (Verde Bosque muy oscuro) */
-.button-add {
-    -fx-background-color: #0d2616;
+.button.button-add {
+    -fx-background-color: #0d2616 !important;
     -fx-text-fill: #fcfaf5;
-}
-.button-add:hover {
-    -fx-background-color: #1a472a;
 }
 
 /* 2. Botón EXPULSAR / ELIMINAR (Rojo Ladrillo) */
@@ -73,27 +68,21 @@
     -fx-background-color: #96281b;
     -fx-text-fill: #fcfaf5;
 }
-.button-delete:hover, .button-expel:hover {
-    -fx-background-color: #c0392b;
-}
+
 
 /* 3. Botón PDF (Azul Pizarra - Igual que el del detalle) */
-.button-pdf {
-    -fx-background-color: #34495e;
+.button.button-pdf {
+    -fx-background-color: #34495e !important;
     -fx-text-fill: white;
 }
-.button-pdf:hover {
-    -fx-background-color: #46637f;
-}
+
 
 /* 4. Botón VOLVER / LISTADO (Granate Original) */
 .button-back {
     -fx-background-color: #4a0404;
     -fx-text-fill: #fcfaf5;
 }
-.button-back:hover {
-    -fx-background-color: #630606;
-}
+
 
 /* --- OTROS ELEMENTOS --- */
 .text-field, .combo-box {
@@ -107,3 +96,10 @@
     -fx-text-fill: #4a0404;
     -fx-border-width: 1px;
 }
+
+.font-small { -fx-font-size: 11px; }
+.font-medium { -fx-font-size: 14px; }
+.font-large { -fx-font-size: 18px; }
+
+.dark-mode { -fx-background-color: #1a1a1a !important; }
+.dark-mode .label { -fx-text-fill: #d4af37; } /* Letras doradas sobre fondo oscuro */

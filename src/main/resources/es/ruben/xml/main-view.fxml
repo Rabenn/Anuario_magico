@@ -16,7 +16,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<BorderPane stylesheets="@../css/styles.css" prefHeight="700.0" prefWidth="1000.0" xmlns="http://javafx.com/javafx/13" xmlns:fx="http://javafx.com/fxml/1" fx:controller="es.ruben.HelloController">
+<BorderPane prefHeight="700.0" prefWidth="1000.0" xmlns="http://javafx.com/javafx/13" xmlns:fx="http://javafx.com/fxml/1" fx:controller="es.ruben.HelloController">
     <top>
         <VBox spacing="15.0" BorderPane.alignment="CENTER">
             <children>
@@ -32,6 +32,22 @@
                                 <MenuItem fx:id="menuManualItem" text="Manual de Usuario" />
                             </items>
                         </Menu>
+                        <Menu fx:id="menuAccessibility" text="Accesibilidad">
+                            <items>
+
+                                <MenuItem fx:id="darkModeItem" text="Modo oscuro" />
+
+                                <Menu text="Tamaño de texto">
+                                    <items>
+                                        <MenuItem fx:id="textSmallItem" text="Pequeño" />
+                                        <MenuItem fx:id="textMediumItem" text="Mediano" />
+                                        <MenuItem fx:id="textLargeItem" text="Grande" />
+                                    </items>
+                                </Menu>
+
+                            </items>
+                        </Menu>
+
                     </menus>
                 </MenuBar>
 

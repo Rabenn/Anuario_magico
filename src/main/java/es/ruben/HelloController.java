@@ -75,6 +75,11 @@ public class HelloController {
     @FXML private MenuItem menuImportItem;
     @FXML private Menu menuHelp;
     @FXML private MenuItem menuManualItem;
+    @FXML private MenuItem darkModeItem;
+    @FXML private MenuItem textSmallItem;
+    @FXML private MenuItem textMediumItem;
+    @FXML private MenuItem textLargeItem;
+
 
     private ObservableList<Wizard> wizardList = FXCollections.observableArrayList();
     private FilteredList<Wizard> filteredData;
@@ -89,6 +94,9 @@ public class HelloController {
 
     // Script de Python para importación ETL
     private final String IMPORT_SCRIPT_NAME = "etl_files.py";
+    private String LIGHT_CSS;
+    private String DARK_CSS;
+    private boolean darkMode = false;
 
     /**
      * Método de inicialización del controlador.
@@ -146,6 +154,31 @@ public class HelloController {
             setupPagination();
             updateInterfaceLanguage();
         }
+        // 1️⃣ Inicializar las rutas de CSS
+        LIGHT_CSS = Objects.requireNonNull(
+                getClass().getResource("/es/ruben/css/styles.css"),
+                "No se encuentra styles.css"
+        ).toExternalForm();
+
+        DARK_CSS = Objects.requireNonNull(
+                getClass().getResource("/es/ruben/css/dark.css"),
+                "No se encuentra dark.css"
+        ).toExternalForm();
+
+        // 2️⃣ Configurar acciones de los botones
+        darkModeItem.setOnAction(e -> toggleDarkMode());
+
+        textSmallItem.setOnAction(e -> setFontScale(0.85));
+        textMediumItem.setOnAction(e -> setFontScale(1.0));
+        textLargeItem.setOnAction(e -> setFontScale(1.3));
+
+        // 3️⃣ Aplicar CSS una vez que la Scene está lista
+        Platform.runLater(() -> {
+            Scene scene = rootPane.getScene();
+            if (scene != null) {
+                scene.getStylesheets().add(LIGHT_CSS);
+            }
+        });
     }
 
     /**
@@ -294,11 +327,9 @@ public class HelloController {
         menuManualItem.setText(getText("menu_manual"));
 
         addBtn.setText(getText("btn_add"));
-        addBtn.setGraphic(createIconLabel("✚"));
         addBtn.setContentDisplay(ContentDisplay.LEFT);
 
         pdfBtn.setText(getText("btn_pdf"));
-        pdfBtn.setGraphic(createIconLabel("📄"));
         pdfBtn.setContentDisplay(ContentDisplay.LEFT);
 
         addBtn.setTooltip(createTooltip(getText("tooltip_add")));
@@ -413,13 +444,10 @@ public class HelloController {
         pagination = null;
 
         Label emptyLabel = new Label(getText("msg_empty_db"));
-        emptyLabel.setStyle("-fx-font-size: 24px; -fx-text-fill: #7f8c8d;");
 
         Label instructionLabel = new Label(getText("msg_click_import"));
-        instructionLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #95a5a6;");
 
         Button btnImport = new Button(getText("btn_import_big"));
-        btnImport.setStyle("-fx-font-size: 16px; -fx-background-color: #e67e22; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-cursor: hand;");
         btnImport.setTooltip(createTooltip(getText("tooltip_import")));
 
         btnImport.setGraphic(createIconLabel("📥"));
@@ -434,13 +462,11 @@ public class HelloController {
 
     private Label createIconLabel(String symbol) {
         Label l = new Label(symbol);
-        l.setStyle("-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold; -fx-padding: 0 5 0 0;");
         return l;
     }
 
     private Tooltip createTooltip(String text) {
         Tooltip t = new Tooltip(text);
-        t.setStyle("-fx-font-size: 11px; -fx-padding: 4px 8px; -fx-background-color: rgba(30,30,30,0.9); -fx-text-fill: white;");
         t.setShowDelay(Duration.millis(200));
         return t;
     }
@@ -474,7 +500,6 @@ public class HelloController {
     private Node createPage(int idx) {
         if (filteredData.isEmpty()) {
             Label noResultsLabel = new Label(getText("msg_no_results"));
-            noResultsLabel.setStyle("-fx-font-size: 20px; -fx-text-fill: #95a5a6; -fx-font-weight: bold;");
             VBox emptyBox = new VBox(noResultsLabel);
             emptyBox.setAlignment(Pos.CENTER);
             emptyBox.setPadding(new Insets(50));
@@ -500,7 +525,6 @@ public class HelloController {
 
         ScrollPane sp = new ScrollPane(centeringWrapper);
         sp.setFitToWidth(true);
-        sp.setStyle("-fx-background-color:transparent; -fx-background: transparent;");
         return sp;
     }
 
@@ -691,8 +715,7 @@ public class HelloController {
             if (file != null) {
                 selectedFile[0] = file;
                 imgLabel.setText(file.getName());
-                imgLabel.setStyle("-fx-text-fill: green;");
-            }
+                 }
         });
 
         grid.add(new Label(currentLang.equals("ES") ? "Nombre:" : "Name:"), 0, 0);
@@ -802,7 +825,7 @@ public class HelloController {
         Label title = new Label(w.getName()); title.getStyleClass().add("detail-title");
         HBox buttonsBox = new HBox(20); buttonsBox.setAlignment(Pos.CENTER);
 
-        Button backBtn = new Button(getText("btn_back"));
+        Button backBtn = new Button(getText("btn_back").toUpperCase());
         backBtn.getStyleClass().add("button-back");
         backBtn.setTooltip(createTooltip(getText("tooltip_back")));
         backBtn.setOnAction(e -> {
@@ -818,7 +841,7 @@ public class HelloController {
             reportService.printWizardProfile(w, rootPane.getScene().getWindow());
         });
 
-        Button deleteBtn = new Button(getText("btn_delete"));
+        Button deleteBtn = new Button(getText("btn_delete").toUpperCase());
         deleteBtn.getStyleClass().add("button-delete");
         deleteBtn.setTooltip(createTooltip(getText("tooltip_delete")));
         deleteBtn.setOnAction(e -> deleteWizard(w));
@@ -829,4 +852,33 @@ public class HelloController {
         rootPane.getChildren().clear();
         rootPane.getChildren().add(details);
     }
+
+    private void toggleDarkMode() {
+        System.out.println("Toggle dark mode pressed!");
+        Scene scene = rootPane.getScene();
+        if (scene == null) {
+            System.out.println("Scene es null");
+            return;
+        }
+
+        scene.getStylesheets().clear();
+        if (darkMode) {
+            scene.getStylesheets().add(LIGHT_CSS);
+            System.out.println("Modo claro aplicado");
+        } else {
+            scene.getStylesheets().add(DARK_CSS);
+            System.out.println("Modo oscuro aplicado");
+        }
+
+        darkMode = !darkMode;
+    }
+
+    private void setFontScale(double scale) {
+
+        rootPane.setStyle(
+                "-fx-font-size: " + (14 * scale) + "px;"
+        );
+    }
+
+
 }
