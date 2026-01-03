@@ -16,12 +16,21 @@ FILE_CSV = "imagenes.csv"
 MAX_WORKERS = 10  # Número de descargas simultáneas
 
 # --- FIX PARA EL ERROR DE TAMAÑO CSV ---
+# Aumenta el límite del tamaño de campo para manejar strings Base64 muy largos
 csv.field_size_limit(sys.maxsize)
 
 def process_image(char_data, session):
     """
-    Función optimizada para ejecutarse en paralelo.
-    Recibe la sesión para reutilizar conexiones TCP.
+    Descarga, redimensiona y codifica una imagen en Base64.
+    Está optimizada para ejecutarse dentro de un hilo (thread).
+
+    Args:
+        char_data (dict): Diccionario con datos del personaje. Debe contener 'id' e 'img' (URL).
+        session (requests.Session): Sesión HTTP reutilizable para mejorar el rendimiento de conexión.
+
+    Returns:
+        tuple: Una tupla (id, base64_string) si el proceso es exitoso.
+        None: Si no hay URL, falla la descarga o hay un error de procesamiento.
     """
     url = char_data['img']
     c_id = char_data['id']
@@ -30,38 +39,62 @@ def process_image(char_data, session):
         return None
 
     try:
-        # Eliminado el time.sleep(1.0)
+        # Realizamos la petición GET usando la sesión pasada como argumento
         response = session.get(url, timeout=10)
         if response.status_code == 200:
+            # Procesamiento de imagen en memoria sin guardar en disco intermedio
             img_io = io.BytesIO(response.content)
             pil_img = Image.open(img_io)
+
+            # Convertimos a RGB si es necesario (para evitar errores con PNGs transparentes)
             if pil_img.mode in ("RGBA", "P"):
                 pil_img = pil_img.convert("RGB")
 
+            # Redimensionamos manteniendo la relación de aspecto (thumbnail)
             pil_img.thumbnail((300, 300))
 
+            # Guardamos en un buffer de memoria como JPEG
             out_io = io.BytesIO()
             pil_img.save(out_io, format="JPEG", quality=80)
+
+            # Codificamos a Base64
             b64 = base64.b64encode(out_io.getvalue()).decode('utf-8')
             return (c_id, b64)
     except Exception as e:
-        # Puedes descomentar para ver errores: print(f"Error {c_id}: {e}")
+        # Se captura cualquier error de red o de imagen para no detener el hilo
         pass
     return None
 
 def load_existing_ids():
+    """
+    Lee el archivo CSV existente para identificar qué imágenes ya han sido descargadas.
+    Esto permite reanudar el script sin duplicar trabajo.
+
+    Returns:
+        set: Un conjunto (set) con los IDs (strings) que ya existen en el CSV.
+    """
     ids = set()
     if os.path.exists(FILE_CSV):
         try:
             with open(FILE_CSV, "r", encoding="utf-8") as f:
                 reader = csv.reader(f)
-                next(reader, None)
+                next(reader, None)  # Saltar encabezado
                 for r in reader:
                     if r: ids.add(r[0])
-        except: pass
+        except:
+            pass
     return ids
 
 def run_etl():
+    """
+    Función principal que orquesta todo el flujo ETL (Extract, Transform, Load).
+
+    Fases:
+    1. Extracción (API): Itera por todas las páginas de la API de PotterDB.
+    2. Guardado Metadatos: Genera archivos JSON (nombres/casas) y XML (varitas).
+    3. Procesamiento Imágenes: Descarga imágenes faltantes usando concurrencia (ThreadPoolExecutor)
+       y las guarda en un CSV codificadas en Base64.
+    """
     # --- FASE 1: OBTENCIÓN DE DATOS (API) ---
     print(" FASE 1: Metadatos API...")
     chars = []
@@ -104,6 +137,7 @@ def run_etl():
         # Crear string gigante y escribir una sola vez es más rápido que escribir línea a línea
         xml_content = []
         for c in chars:
+            # Escapamos caracteres especiales para XML válido
             w = str(c["wand"]).replace("&","&amp;").replace("<","&lt;")
             xml_content.append(f' <Wizard id="{c["id"]}"><Wand>{w}</Wand></Wizard>')
         f.write("\n".join(xml_content))
@@ -130,7 +164,7 @@ def run_etl():
 
         # Usamos Session para descarga de imágenes también
         with requests.Session() as img_session:
-            # ThreadPoolExecutor maneja los hilos
+            # ThreadPoolExecutor maneja los hilos para descargas simultáneas
             with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                 # Lanzamos todas las tareas
                 future_to_char = {
@@ -146,7 +180,7 @@ def run_etl():
 
                     if result:
                         writer.writerow(result)
-                        # No hacemos f.flush() cada vez, dejamos que Python maneje el buffer
+                        # No hacemos f.flush() cada vez, dejamos que Python maneje el buffer para velocidad
 
     print(f"\n ¡Terminado! Procesados {total} nuevos registros.")
 
